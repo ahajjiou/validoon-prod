@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Validoon — Local decision engine</title>
+  <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand">
+        <!-- LOGO: Decision Mark -->
+        <div class="brand-badge" aria-hidden="true">
+          V
+        </div>
+
+        <div class="brand-text">
+          <div class="brand-name">Validoon</div>
+          <div class="brand-sub">
+            Local decision engine — ALLOW / WARN / BLOCK • no uploads • no network calls
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B</button>
+        <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
+        <button class="btn btn-ghost btn-pill" id="btnInfo">Info</button>
+        <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="grid">
+
+      <!-- Input -->
+      <div class="card card-lg">
+        <div class="card-h">
+          <div>
+            <div class="h-title">Input Stream</div>
+            <div class="h-sub">
+              One item per line (URLs, logs, SQL, base64, suspicious strings).
+            </div>
+          </div>
+        </div>
+
+        <textarea
+          id="input"
+          class="textarea"
+          spellcheck="false"
+          placeholder="Paste here..."
+        ></textarea>
+
+        <div class="hint">
+          Tip: Use Test A/B to validate end-to-end on any device/network.
+        </div>
+        <div class="footer-note mono" id="buildStamp"></div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="card card-lg">
+        <div class="card-h">
+          <div>
+            <div class="h-title">System Verdict</div>
+            <div class="h-sub">Instant local scoring — no network calls.</div>
+          </div>
+        </div>
+
+        <div id="verdictBox" class="verdict verdict-secure">
+          <div class="verdict-title" id="verdictText">SECURE</div>
+
+          <div class="verdict-meta">
+            <div class="meta-box">
+              <div class="meta-k">Peak severity</div>
+              <div class="meta-v" id="peakSev">0%</div>
+            </div>
+            <div class="meta-box">
+              <div class="meta-k">Confidence</div>
+              <div class="meta-v" id="peakConf">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-k">Scans</div>
+            <div class="stat-v" id="kScans">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-k">Allow</div>
+            <div class="stat-v ok" id="kAllow">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-k">Warn</div>
+            <div class="stat-v warn" id="kWarn">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-k">Block</div>
+            <div class="stat-v bad" id="kBlock">0</div>
+          </div>
+        </div>
+
+        <!-- Signals -->
+        <div class="signals">
+          <div class="signals-title">Active signals</div>
+          <div class="chips" id="signals"></div>
+        </div>
+
+        <div class="footer-note" id="reco"></div>
+      </div>
+
+      <!-- Results -->
+      <div class="card card-xl">
+        <div class="card-h">
+          <div>
+            <div class="h-title">Per-line findings</div>
+            <div class="h-sub">
+              Input • type • decision • severity • confidence • entropy
+            </div>
+          </div>
+        </div>
+
+        <div class="table">
+          <div class="thead">
+            <div>Input</div>
+            <div>Type</div>
+            <div>Decision</div>
+            <div>Sev</div>
+            <div>Conf</div>
+            <div>Entropy</div>
+          </div>
+          <div id="rows"></div>
+        </div>
+
+        <div class="footer-note">
+          Local-only. No uploads. No tracking scripts.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Info Modal -->
+  <div class="modal-backdrop hidden" id="infoDlg">
+    <div class="modal">
+      <div class="modal-h">
+        <div class="modal-title">Validoon — Info</div>
+      </div>
+      <div class="modal-b">
+        <ul class="modal-list">
+          <li>Local-only decision engine</li>
+          <li>No uploads, no tracking</li>
+          <li>ALLOW / WARN / BLOCK with severity & confidence</li>
+          <li>Export JSON for tickets / SOC</li>
+        </ul>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-ghost" id="btnCloseInfo">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app_prod.js" defer></script>
+</body>
+</html>
