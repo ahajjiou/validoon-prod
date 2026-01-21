@@ -271,7 +271,7 @@
   }
 
   // ----------------------------
-  // UI wiring
+  // UI
   // ----------------------------
   function setVerdictUI(meta) {
     const verdictText = $("verdictText");
@@ -333,17 +333,75 @@
   }
 
   // ----------------------------
-  // renderRows متطابقة الآن مع index.html
+  // A) Stable Per-line table (DOM + CSS injected, no CSS file changes)
   // ----------------------------
+  function injectRowsCSSOnce() {
+    if (document.getElementById("validoon-rows-css")) return;
+
+    const css = `
+/* Validoon: Per-line findings grid (injected by app_prod.js) */
+.table #rows{display:block}
+.table #rows .vrow{
+  display:grid;
+  grid-template-columns: minmax(260px, 1.5fr) 110px 110px 70px 80px 90px;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.10);
+}
+.table #rows .vrow:hover{background: rgba(255,255,255,.04);}
+.table #rows .vrow .cell{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+  font-size:12px;
+  color: rgba(255,255,255,.90);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.table #rows .vrow .cell.input{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;}
+.table #rows .vrow .cell.dec{
+  font-weight:900;
+  letter-spacing:.3px;
+  justify-self:start;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  width: max-content;
+}
+.table #rows .vrow.allow .cell.dec{border-color: rgba(53,208,127,.45); background: rgba(53,208,127,.10);}
+.table #rows .vrow.warn  .cell.dec{border-color: rgba(255,184,77,.55); background: rgba(255,184,77,.10);}
+.table #rows .vrow.block .cell.dec{border-color: rgba(255,91,91,.55); background: rgba(255,91,91,.10);}
+.table #rows .vrow.empty{
+  grid-template-columns: 1fr;
+  color: rgba(255,255,255,.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+}
+@media(max-width:980px){
+  .table #rows .vrow{
+    grid-template-columns: 1fr;
+  }
+  .table #rows .vrow .cell{white-space:normal}
+}
+    `.trim();
+
+    const style = document.createElement("style");
+    style.id = "validoon-rows-css";
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
   function renderRows(rows) {
-    const body = $("rows");
+    const body = $("rows"); // matches index.html
     if (!body) return;
 
+    injectRowsCSSOnce();
     body.innerHTML = "";
 
     if (!rows.length) {
       const empty = document.createElement("div");
-      empty.className = "row empty";
+      empty.className = "vrow empty";
       empty.textContent = "No results yet.";
       body.appendChild(empty);
       return;
@@ -351,24 +409,114 @@
 
     for (const r of rows) {
       const row = document.createElement("div");
-      row.className = "row";
+      const cls = r.decision === "BLOCK" ? "block" : (r.decision === "WARN" ? "warn" : "allow");
+      row.className = `vrow ${cls}`;
 
-      const addCell = (text, extraClass) => {
+      const add = (text, extra) => {
         const c = document.createElement("div");
+        c.className = `cell ${extra || ""}`.trim();
         c.textContent = text;
-        if (extraClass) c.classList.add(extraClass);
         row.appendChild(c);
       };
 
-      addCell(r.input, "cell-input");
-      addCell(r.type, "cell-type");
-      addCell(r.decision, "cell-decision");
-      addCell(`${r.severity}%`, "cell-sev");
-      addCell(`${r.confidence}%`, "cell-conf");
-      addCell(String(r.entropy), "cell-entropy");
+      add(r.input, "input");
+      add(r.type, "type");
+      add(r.decision, "dec");
+      add(`${r.severity}%`, "sev");
+      add(`${r.confidence}%`, "conf");
+      add(String(r.entropy), "ent");
 
       body.appendChild(row);
     }
+  }
+
+  // ----------------------------
+  // B) Deterministic Self-tests (local-only, no UI change except stamp/console)
+  // ----------------------------
+  const SELF_TESTS = [
+    {
+      name: "CORE_MIXED_4LINES",
+      input: [
+        "https://example.com/",
+        "https://good.com/redirect?next=https%3A%2F%2Fevil.com",
+        "<img src=x onerror=alert(1)>",
+        "Authorization: Bearer abc.def.ghi"
+      ],
+      expect: {
+        verdict: "DANGER",
+        peakSeverity: 85,
+        confidence: 90,
+        counts: { scans: 4, allow: 1, warn: 2, block: 1 },
+        perLine: [
+          { decision: "ALLOW", severity: 0,  confidence: 0 },
+          { decision: "WARN",  severity: 55, confidence: 90 },
+          { decision: "BLOCK", severity: 85, confidence: 85 },
+          { decision: "WARN",  severity: 65, confidence: 85 }
+        ]
+      }
+    },
+    {
+      name: "SECRETS_FORCE_WARN",
+      input: [
+        "AKIAIOSFODNN7EXAMPLE",
+        "-----BEGIN PRIVATE KEY-----",
+        "-----END PRIVATE KEY-----"
+      ],
+      // all are secrets => should be WARN overall (no hardBlock)
+      expect: {
+        verdict: "SUSPICIOUS",
+        // peak can be 75 (private key block), conf 95
+        peakSeverity: 75,
+        confidence: 95,
+        counts: { scans: 3, allow: 0, warn: 3, block: 0 },
+        perLine: [
+          { decision: "WARN", severity: 70, confidence: 90 },
+          { decision: "WARN", severity: 75, confidence: 95 },
+          { decision: "WARN", severity: 75, confidence: 95 }
+        ]
+      }
+    }
+  ];
+
+  function deepEqualCounts(a, b) {
+    return a && b &&
+      a.scans === b.scans &&
+      a.allow === b.allow &&
+      a.warn === b.warn &&
+      a.block === b.block;
+  }
+
+  function runSelfTests() {
+    const results = [];
+    for (const t of SELF_TESTS) {
+      const lines = t.input.map(normalizeLine).filter(Boolean);
+      const rows = lines.map(analyzeOne);
+      const report = buildReport(rows);
+
+      const fails = [];
+
+      if (report.verdict !== t.expect.verdict) fails.push(`verdict expected ${t.expect.verdict} got ${report.verdict}`);
+      if (report.peakSeverity !== t.expect.peakSeverity) fails.push(`peakSeverity expected ${t.expect.peakSeverity} got ${report.peakSeverity}`);
+      if (report.confidence !== t.expect.confidence) fails.push(`confidence expected ${t.expect.confidence} got ${report.confidence}`);
+      if (!deepEqualCounts(report.counts, t.expect.counts)) fails.push(`counts mismatch expected ${JSON.stringify(t.expect.counts)} got ${JSON.stringify(report.counts)}`);
+
+      if (t.expect.perLine && t.expect.perLine.length === report.rows.length) {
+        for (let i = 0; i < report.rows.length; i++) {
+          const got = report.rows[i];
+          const exp = t.expect.perLine[i];
+          if (got.decision !== exp.decision) fails.push(`row[${i}] decision expected ${exp.decision} got ${got.decision}`);
+          if (got.severity !== exp.severity) fails.push(`row[${i}] severity expected ${exp.severity} got ${got.severity}`);
+          if (got.confidence !== exp.confidence) fails.push(`row[${i}] confidence expected ${exp.confidence} got ${got.confidence}`);
+        }
+      } else {
+        fails.push(`perLine length mismatch`);
+      }
+
+      results.push({ name: t.name, ok: fails.length === 0, fails });
+    }
+
+    const okAll = results.every(r => r.ok);
+    return { okAll, results };
   }
 
   // ----------------------------
@@ -494,7 +642,7 @@
     runScanFromTextarea();
   }
 
-  // Modal
+  // Modal matches your HTML: <div id="infoDlg" class="modal-backdrop hidden">
   function openInfo() {
     const dlg = $("infoDlg");
     if (!dlg) return;
@@ -510,6 +658,8 @@
   }
 
   function boot() {
+    injectRowsCSSOnce();
+
     const stamp = $("buildStamp");
     if (stamp) stamp.textContent = `Build: ${BUILD}`;
 
@@ -521,6 +671,12 @@
       signals: []
     });
 
+    // Self-test (local)
+    const st = runSelfTests();
+    if (stamp) stamp.textContent = `Build: ${BUILD} • Self-test: ${st.okAll ? "PASS" : "FAIL"}`;
+    console.log(`[Validoon] ${BUILD} loaded. Mode=PROD. Local-only. No network.`);
+    console.log(`[Validoon] Self-test: ${st.okAll ? "PASS" : "FAIL"}`, st.results);
+
     safeOn($("btnLoadA"), "click", () => loadTest(TEST_A));
     safeOn($("btnLoadB"), "click", () => loadTest(TEST_B));
     safeOn($("btnScan"), "click", runScanFromTextarea);
@@ -529,14 +685,13 @@
     safeOn($("btnInfo"), "click", openInfo);
     safeOn($("btnCloseInfo"), "click", closeInfo);
 
+    // Close modal on backdrop click
     const dlg = $("infoDlg");
     if (dlg) {
       dlg.addEventListener("click", (e) => {
         if (e.target === dlg) closeInfo();
       }, { passive: true });
     }
-
-    console.log(`[Validoon] ${BUILD} loaded. Mode=PROD. Local-only. No network.`);
   }
 
   if (document.readyState === "loading") {
