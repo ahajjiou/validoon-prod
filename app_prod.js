@@ -271,7 +271,7 @@
   }
 
   // ----------------------------
-  // UI wiring (matches your final index.html)
+  // UI wiring
   // ----------------------------
   function setVerdictUI(meta) {
     const verdictText = $("verdictText");
@@ -280,13 +280,11 @@
     if (verdictText) verdictText.textContent = meta.verdict;
 
     if (box) {
-      // Keep border feedback
       box.style.borderColor =
         meta.verdict === "DANGER" ? "rgba(239,68,68,.35)" :
         meta.verdict === "SUSPICIOUS" ? "rgba(245,158,11,.35)" :
         "rgba(45,212,191,.25)";
 
-      // Toggle CSS state classes (your HTML starts with verdict-secure)
       box.classList.remove("verdict-secure", "verdict-warn", "verdict-danger");
       if (meta.verdict === "DANGER") box.classList.add("verdict-danger");
       else if (meta.verdict === "SUSPICIOUS") box.classList.add("verdict-warn");
@@ -334,46 +332,42 @@
     }
   }
 
+  // ----------------------------
+  // renderRows متطابقة الآن مع index.html
+  // ----------------------------
   function renderRows(rows) {
-    const body = $("rowsBody");
+    const body = $("rows");
     if (!body) return;
 
     body.innerHTML = "";
 
     if (!rows.length) {
-      const tr = document.createElement("tr");
-      tr.className = "empty";
-      const td = document.createElement("td");
-      td.colSpan = 6;
-      td.textContent = "No results yet.";
-      tr.appendChild(td);
-      body.appendChild(tr);
+      const empty = document.createElement("div");
+      empty.className = "row empty";
+      empty.textContent = "No results yet.";
+      body.appendChild(empty);
       return;
     }
 
     for (const r of rows) {
-      const tr = document.createElement("tr");
+      const row = document.createElement("div");
+      row.className = "row";
 
-      const tdInput = document.createElement("td");
-      tdInput.textContent = r.input;
+      const addCell = (text, extraClass) => {
+        const c = document.createElement("div");
+        c.textContent = text;
+        if (extraClass) c.classList.add(extraClass);
+        row.appendChild(c);
+      };
 
-      const tdType = document.createElement("td");
-      tdType.textContent = r.type;
+      addCell(r.input, "cell-input");
+      addCell(r.type, "cell-type");
+      addCell(r.decision, "cell-decision");
+      addCell(`${r.severity}%`, "cell-sev");
+      addCell(`${r.confidence}%`, "cell-conf");
+      addCell(String(r.entropy), "cell-entropy");
 
-      const tdDecision = document.createElement("td");
-      tdDecision.textContent = r.decision;
-
-      const tdSev = document.createElement("td");
-      tdSev.textContent = `${r.severity}%`;
-
-      const tdConf = document.createElement("td");
-      tdConf.textContent = `${r.confidence}%`;
-
-      const tdEnt = document.createElement("td");
-      tdEnt.textContent = String(r.entropy);
-
-      tr.append(tdInput, tdType, tdDecision, tdSev, tdConf, tdEnt);
-      body.appendChild(tr);
+      body.appendChild(row);
     }
   }
 
@@ -500,7 +494,7 @@
     runScanFromTextarea();
   }
 
-  // Modal matches your HTML: <div id="infoDlg" class="modal-backdrop hidden">
+  // Modal
   function openInfo() {
     const dlg = $("infoDlg");
     if (!dlg) return;
@@ -535,7 +529,6 @@
     safeOn($("btnInfo"), "click", openInfo);
     safeOn($("btnCloseInfo"), "click", closeInfo);
 
-    // Close modal on backdrop click
     const dlg = $("infoDlg");
     if (dlg) {
       dlg.addEventListener("click", (e) => {
