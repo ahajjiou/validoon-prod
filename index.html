@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — 2026 Strategic Engine</title>
+  <title>Validoon — Strategic Security Engine</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -17,10 +17,10 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
-        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
-        <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
-        <button class="btn btn-ghost btn-pill" id="btnInfo">Info</button>
+        <button class="btn btn-primary btn-pill" onclick="runValidoonScan()">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" onclick="exportValidoonReport()">Export JSON</button>
+        <button class="btn btn-danger btn-pill" onclick="clearValidoonApp()">Clear</button>
+        <button class="btn btn-ghost btn-pill" onclick="toggleInfoModal(true)">Info</button>
       </div>
     </div>
 
@@ -28,12 +28,12 @@
       <div class="card card-lg">
         <div class="h-title">Input Stream</div>
         <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
-        <div class="footer-note" id="buildStamp"></div>
+        <div class="footer-note" id="buildStamp">Build: v1.2.1 FINAL</div>
       </div>
 
       <div class="card card-lg">
         <div id="verdictBox" class="verdict verdict-secure">
-          <div class="verdict-title" id="verdictText">SECURE</div>
+          <div class="verdict-title" id="verdictText">READY</div>
           <div class="verdict-meta">
             <div class="meta-box"><div>Peak Severity</div><div id="peakSev">0%</div></div>
           </div>
@@ -65,18 +65,18 @@
 
   <div class="modal-backdrop hidden" id="infoDlg">
     <div class="modal">
-      <div class="modal-h"><div class="modal-title">Validoon v1.2.1</div></div>
+      <div class="modal-h"><div class="modal-title">Validoon Info</div></div>
       <div class="modal-b">
         <ul>
-          <li>Advanced AI Prompt Injection Detection</li>
-          <li>Cloud SSRF & IMDSv2 Bypass Protection</li>
-          <li>Local-only, Zero-leakage Processing</li>
+          [span_0](start_span)[span_1](start_span)<li>Advanced LLM Prompt Injection Detection[span_0](end_span)[span_1](end_span)</li>
+          [span_2](start_span)[span_3](start_span)<li>Cloud SSRF & IMDSv2 Bypass Protection[span_2](end_span)[span_3](end_span)</li>
+          [span_4](start_span)<li>Local-only Processing for Data Privacy[span_4](end_span)</li>
         </ul>
       </div>
-      <div class="modal-f"><button class="btn btn-ghost" id="btnCloseInfo">Close</button></div>
+      <div class="modal-f"><button class="btn btn-ghost" onclick="toggleInfoModal(false)">Close</button></div>
     </div>
   </div>
 
-  <script src="app_prod.js" defer></script>
+  <script src="app_prod.js"></script>
 </body>
 </html>
