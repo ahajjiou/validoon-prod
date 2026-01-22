@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — 2026 Strategic Engine</title>
+  <title>Validoon — Local Security Engine</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -13,12 +13,14 @@
         <div class="brand-badge">V</div>
         <div class="brand-text">
           <div class="brand-name">Validoon</div>
-          <div class="brand-sub">Local 2026 Threat Intel — AI & Cloud Protection</div>
+          <div class="brand-sub">Local Decision Engine — AI & Cloud Threat Intel 2026</div>
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A (Cloud)</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B (AI)</button>
         <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
         <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
       </div>
     </div>
@@ -27,26 +29,28 @@
       <div class="card card-lg">
         <div class="h-title">Input Stream</div>
         <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
-        <div class="footer-note" id="buildStamp">Build: v1.2.2 FINAL</div>
+        <div class="footer-note" id="buildStamp"></div>
       </div>
 
       <div class="card card-lg">
         <div id="verdictBox" class="verdict verdict-secure">
           <div class="verdict-title" id="verdictText">READY</div>
-          <div class="stats" style="display:flex; gap:15px; margin-top:10px;">
-            <div>Scans: <span id="kScans">0</span></div>
-            <div style="color:#ff5b5b">Block: <span id="kBlock">0</span></div>
+          <div class="stats">
+            <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
+            <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
+            <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
+            <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
           </div>
         </div>
-        <div class="signals" style="margin-top:15px;">
-          <strong>Active Signals:</strong>
+        <div class="signals">
+          <div class="signals-title">Active Signals</div>
           <div id="signals" class="chips"></div>
         </div>
       </div>
 
       <div class="card card-xl">
         <div class="table">
-          <div class="thead" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; font-weight: bold; padding: 10px; border-bottom: 1px solid #333;">
+          <div class="thead">
             <div>Input Content</div>
             <div>Decision</div>
             <div>Sev</div>
@@ -57,6 +61,6 @@
       </div>
     </div>
   </div>
-  <script src="app_prod.js"></script>
+  <script src="app_prod.js" defer></script>
 </body>
 </html>
