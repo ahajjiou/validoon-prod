@@ -3,142 +3,60 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — 2026 Strategic Intelligence Engine</title>
+  <title>Validoon — 2026 Strategic Engine</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
-
     <div class="topbar">
       <div class="brand">
-        <div class="brand-badge" aria-hidden="true">V</div>
+        <div class="brand-badge">V</div>
         <div class="brand-text">
           <div class="brand-name">Validoon</div>
-          <div class="brand-sub">
-            Local Decision Engine — AI & Cloud Threat Intel 2026
-          </div>
+          <div class="brand-sub">Local 2026 Threat Intel — AI & Cloud Protection</div>
         </div>
       </div>
-
       <div class="topbar-actions">
-        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A (Cloud)</button>
-        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B (AI)</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A</button>
         <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
-        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
-        <button class="btn btn-ghost btn-pill" id="btnInfo">Info</button>
         <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
       </div>
     </div>
 
     <div class="grid">
-
       <div class="card card-lg">
-        <div class="card-h">
-          <div>
-            <div class="h-title">Input Stream</div>
-            <div class="h-sub">Analyze AI Prompts, Cloud URLs, and System Logs locally.</div>
-          </div>
-        </div>
-
-        <textarea
-          id="input"
-          class="textarea"
-          spellcheck="false"
-          placeholder="Paste payloads or URLs here..."
-        ></textarea>
-
-        <div class="hint">
-          Tip: 2026 Engine detects SSRF Bypasses, AI Injection, and Token Smuggling.
-        </div>
-        <div class="footer-note mono" id="buildStamp"></div>
+        <div class="h-title">Input Stream</div>
+        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
+        <div class="footer-note" id="buildStamp">Build: v1.2.2 FINAL</div>
       </div>
 
       <div class="card card-lg">
-        <div class="card-h">
-          <div>
-            <div class="h-title">System Verdict</div>
-            <div class="h-sub">Zero-trust scoring — No data leaks.</div>
-          </div>
-        </div>
-
         <div id="verdictBox" class="verdict verdict-secure">
           <div class="verdict-title" id="verdictText">READY</div>
-
-          <div class="verdict-meta">
-            <div class="meta-box">
-              <div class="meta-k">Peak severity</div>
-              <div class="meta-v" id="peakSev">0%</div>
-            </div>
+          <div class="stats" style="display:flex; gap:15px; margin-top:10px;">
+            <div>Scans: <span id="kScans">0</span></div>
+            <div style="color:#ff5b5b">Block: <span id="kBlock">0</span></div>
           </div>
         </div>
-
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-k">Scans</div>
-            <div class="stat-v" id="kScans">0</div>
-          </div>
-          <div class="stat">
-            <div class="stat-k">Block</div>
-            <div class="stat-v bad" id="kBlock">0</div>
-          </div>
-          <div class="stat">
-            <div class="stat-k">Warn</div>
-            <div class="stat-v warn" id="kWarn">0</div>
-          </div>
-          <div class="stat">
-            <div class="stat-k">Allow</div>
-            <div class="stat-v ok" id="kAllow">0</div>
-          </div>
-        </div>
-
-        <div class="signals">
-          <div class="signals-title">Active Signals (2026 Detection)</div>
-          <div class="chips" id="signals"></div>
+        <div class="signals" style="margin-top:15px;">
+          <strong>Active Signals:</strong>
+          <div id="signals" class="chips"></div>
         </div>
       </div>
 
       <div class="card card-xl">
-        <div class="card-h">
-          <div>
-            <div class="h-title">Strategic Findings</div>
-            <div class="h-sub">Input • Type • Decision • Sev • Conf • Entropy</div>
-          </div>
-        </div>
-
         <div class="table">
-          <div class="thead">
+          <div class="thead" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; font-weight: bold; padding: 10px; border-bottom: 1px solid #333;">
             <div>Input Content</div>
-            <div>Type</div>
             <div>Decision</div>
             <div>Sev</div>
-            <div>Conf</div>
             <div>Entropy</div>
           </div>
           <div id="rows"></div>
         </div>
       </div>
-
     </div>
   </div>
-
-  <div class="modal-backdrop hidden" id="infoDlg">
-    <div class="modal">
-      <div class="modal-h">
-        <div class="modal-title">Validoon v1.2.2 Intelligence</div>
-      </div>
-      <div class="modal-b">
-        <ul class="modal-list">
-          <li><strong>Cloud Protection:</strong> Detects IMDSv2 bypasses & Decimal IP SSRF[cite: 19, 23, 13, 22].</li>
-          <li><strong>AI Security:</strong> Guards against Many-shot Jailbreaks & Indirect Injection[cite: 194, 211, 288].</li>
-          <li><strong>Privacy:</strong> Local-only processing. No network calls, no tracking[cite: 213, 10].</li>
-        </ul>
-      </div>
-      <div class="modal-f">
-        <button class="btn btn-ghost" id="btnCloseInfo">Close System</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="app_prod.js" defer></script>
+  <script src="app_prod.js"></script>
 </body>
 </html>
