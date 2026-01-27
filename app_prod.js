@@ -13,7 +13,7 @@
   }
 
   // ----------------------------
-  // Normalization (v3) - التعامل مع التمويه
+  // Normalization (v3) - فك التمويه
   // ----------------------------
   function tryDecodeURIComponentSafe(s) {
     try { return decodeURIComponent(s); } catch { return s; }
@@ -68,7 +68,7 @@
   }
 
   // ----------------------------
-  // RULES — Core + Cloud/AI/Infra (Heuristic Weights)
+  // RULES — الأوزان الاستنتاجية
   // ----------------------------
   const RULES = [
     { label: "SSRF:ADV_PROTOCOLS", test: s => /\b(gopher|dict|tftp|ldap|sftp|netdoc|expect):\/\//i.test(s), sev: 98, conf: 95 },
@@ -86,7 +86,7 @@
   ];
 
   // ----------------------------
-  // Decision Engine (Heuristic)
+  // Decision Engine
   // ----------------------------
   function decideFromHits(hits) {
     const totalScore = hits.reduce((sum, h) => sum + (h.sev || 0), 0);
@@ -97,7 +97,6 @@
     if (hardBlock || hasSev95 || totalScore >= 110) decision = "BLOCK";
     else if (totalScore >= 50) decision = "WARN";
 
-    // Secrets Policy: Force Warn unless hardBlock exists
     if (hits.some(h => h.label.startsWith("SECRET:")) && decision === "BLOCK" && !hardBlock) decision = "WARN";
 
     return { decision, severity: Math.min(totalScore, 100), confidence: hits.length ? Math.max(...hits.map(h => h.conf)) : 0 };
@@ -113,8 +112,6 @@
   // ----------------------------
   // UI & Data Handling
   // ----------------------------
-  let lastReport = null;
-
   function runScanFromTextarea() {
     const inputEl = $("input");
     if (!inputEl) return;
@@ -149,7 +146,7 @@
   }
 
   // ----------------------------
-  // Automation: Webhook Receiver (FOR GUMLOOP)
+  // Automation Receiver
   // ----------------------------
   window.receiveAutomationData = (data) => {
     if (!data || !data.payloads) return;
@@ -157,7 +154,6 @@
     if (inputEl) {
       inputEl.value = data.payloads.join("\n");
       runScanFromTextarea();
-      console.log(`[Automation] Data received from Gumloop at ${nowISO()}`);
     }
   };
 
@@ -165,7 +161,6 @@
     if ($("buildStamp")) $("buildStamp").textContent = `Build: ${BUILD}`;
     safeOn($("btnScan"), "click", runScanFromTextarea);
     safeOn($("btnClear"), "click", () => { if ($("input")) $("input").value = ""; updateUI({ verdict: "SECURE", counts: { scans: 0, block: 0, warn: 0 }, signals: [] }, []); });
-    console.log(`[Validoon] ${BUILD} Ready. Stable Build.`);
   }
 
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", boot) : boot();
