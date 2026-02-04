@@ -9,18 +9,18 @@
   // ---------------------------------------------------------
   const RULES = [
     // 1. AI SECURITY (LLM-01/OWASP)
-    { label: "AI:PROMPT_INJECTION", test: /(?i)(ignore|disregard|forget|skip|bypass)\s+(all\s+)?(previous|prior|above|system|original)\s+(instructions?|prompts?|commands?|directives?|rules?)/i, weight: 95 },
-    { label: "AI:ROLE_OVERRIDE", test: /(?i)(you\s+are\s+now|act\s+as|behave\s+as|pretend\s+to\s+be|from\s+now\s+on)\s+(a\s+)?(hacker|hacking|jailbreak|DAN|evil|unethical|unrestricted|uncensored)/i, weight: 92 },
-    { label: "AI:JAILBREAK_DAN", test: /(?i)\bDAN\b.*?(without\s+)?(constraints?|restrictions?|limitations?|rules?|guidelines?)/i, weight: 93 },
+    { label: "AI:PROMPT_INJECTION", test: /(ignore|disregard|forget|skip|bypass)\s+(all\s+)?(previous|prior|above|system|original)\s+(instructions?|prompts?|commands?|directives?|rules?)/i, weight: 95 },
+    { label: "AI:ROLE_OVERRIDE", test: /(you\s+are\s+now|act\s+as|behave\s+as|pretend\s+to\s+be|from\s+now\s+on)\s+(a\s+)?(hacker|hacking|jailbreak|DAN|evil|unethical|unrestricted|uncensored)/i, weight: 92 },
+    { label: "AI:JAILBREAK_DAN", test: /\bDAN\b.*?(without\s+)?(constraints?|restrictions?|limitations?|rules?|guidelines?)/i, weight: 93 },
     
     // 2. CONTAINER & INFRA (MITRE T1552/T1611)
-    { label: "INFRA:DOCKER_SOCKET", test: /(?i)(\/var\/run\/docker\.sock|docker\.sock|containers\/json|images\/json)/i, weight: 100 },
-    { label: "INFRA:K8S_EXPLOIT", test: /(?i)(kubectl\s+(auth\s+can-i|exec|proxy|port-forward|get\s+secrets))/i, weight: 96 },
-    { label: "INFRA:PRIVILEGED_ESC", test: /(?i)(--privileged|--hostpid|--hostnet|--cap-add=SYS_ADMIN|nsenter\s+--target)/i, weight: 98 },
+    { label: "INFRA:DOCKER_SOCKET", test: /(\/var\/run\/docker\.sock|docker\.sock|containers\/json|images\/json)/i, weight: 100 },
+    { label: "INFRA:K8S_EXPLOIT", test: /(kubectl\s+(auth\s+can-i|exec|proxy|port-forward|get\s+secrets))/i, weight: 96 },
+    { label: "INFRA:PRIVILEGED_ESC", test: /(--privileged|--hostpid|--hostnet|--cap-add=SYS_ADMIN|nsenter\s+--target)/i, weight: 98 },
 
     // 3. CLOUD METADATA (IMDSv2/SSRF)
-    { label: "CLOUD:METADATA_SSRF", test: /(?i)(169\.254\.169\.254|metadata\.google|instance-data|latest\/meta-data)/i, weight: 100 },
-    { label: "CLOUD:ENCODED_IP", test: /(?i)(0251\.0376\.0251\.0376|0xa9\.0xfe\.0xa9\.0xfe|2852039166)/i, weight: 88 }
+    { label: "CLOUD:METADATA_SSRF", test: /(169\.254\.169\.254|metadata\.google|instance-data|latest\/meta-data)/i, weight: 100 },
+    { label: "CLOUD:ENCODED_IP", test: /(0251\.0376\.0251\.0376|0xa9\.0xfe\.0xa9\.0xfe|2852039166)/i, weight: 88 }
   ];
 
   // ---------------------------------------------------------
@@ -46,7 +46,6 @@
     return { input: s, decision, severity: Math.min(totalScore, 100), hits };
   }
 
-  // --- UI & Automation Compatibility ---
   function updateUI(rows) {
     const body = $("rows");
     if (body) {
@@ -59,22 +58,36 @@
     }
   }
 
+  function executeScan() {
+    const inputField = $("input");
+    if (inputField) {
+      const lines = inputField.value.split("\n").filter(l => l.trim());
+      updateUI(lines.map(analyzeOne));
+    }
+  }
+
+  // Automation Link for Gumloop
   window.receiveAutomationData = (data) => {
     const payloads = data.payloads || data.outputs || [];
     if ($("input")) {
       $("input").value = Array.isArray(payloads) ? payloads.join("\n") : payloads;
-      const lines = $("input").value.split("\n").filter(l => l.trim());
-      updateUI(lines.map(analyzeOne));
+      executeScan();
     }
   };
 
   function boot() {
+    const scanBtn = $("btnScan");
+    if (scanBtn) {
+      scanBtn.onclick = executeScan;
+      console.log("Validoon Core Ready.");
+    }
     if ($("buildStamp")) $("buildStamp").textContent = `Version: ${BUILD}`;
-    if ($("btnScan")) $("btnScan").addEventListener("click", () => {
-      const lines = ($("input")?.value || "").split("\n").filter(l => l.trim());
-      updateUI(lines.map(analyzeOne));
-    });
   }
 
-  document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", boot) : boot();
+  // Ensuring boot runs after DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
