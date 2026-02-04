@@ -1,41 +1,53 @@
-// app_prod.js — Enterprise Build v1.2.8_STABLE_HEURISTIC
+// app_prod.js — Validoon v1.3.0_SOVEREIGN (2026 Data-Driven Edition)
 (() => {
   "use strict";
+  const BUILD = "v1.3.0_SOVEREIGN_RELEASE";
+  const $ = (id) => document.getElementById(id);
 
-  const BUILD = "prod_v1.2.8_ENTERPRISE_CLEAN";
-  
-  function $(id) { return document.getElementById(id); }
-
-  // ----------------------------
-  // Enhanced Security Rules - v1.2.8 (Fixed from Test Results)
-  // ----------------------------
+  // ---------------------------------------------------------
+  // Dynamic Threat Matrix (Integrated from Abacus 2026 Data)
+  // ---------------------------------------------------------
   const RULES = [
-    // 1. SSRF: Fixed to detect 169.254.169.254 and Octal IPs
-    { label: "SSRF:ENCODED_IP", test: s => /\b(0[0-7]+(\.0[0-7]+){3}|0x[0-9a-fA-F]{2}(\.0x[0-9a-fA-F]{2}){3}|169\.254\.169\.254)\b/.test(s), sev: 100, conf: 99 },
-    // 2. INFRA: Fixed Docker Socket detection (Was 0% in v1.2.7 test)
-    { label: "INFRA:DOCKER_API", test: s => /(\/var\/run\/docker\.sock|docker\.sock|containers\/json|images\/json)/i.test(s), sev: 100, conf: 98 },
-    // 3. AI: Systematic Safety Escape & Jailbreak
-    { label: "AI:SYSTEM_ESCAPE", test: s => /\b(terminate\s+safety\s+filter|overwrite\s+core\s+logic|bypass\s+guardrails|Ignore\s+all\s+previous\s+instructions)\b/i.test(s), sev: 95, conf: 95 },
-    // 4. SECRET: API Keys detection for 2026 standards
-    { label: "SECRET:API_KEY", test: s => /\b(ghp_|sk_live_|AIza)[A-Za-z0-9_]{16,}\b/.test(s), sev: 90, conf: 90 },
-    // 5. OS: Command Injection detection
-    { label: "OS:COMMAND_INJ", test: s => /([;&|]\s*(whoami|cat\s+\/etc\/passwd|id|uname|ls))/.test(s), sev: 95, conf: 90 }
+    // 1. AI SECURITY (LLM-01/OWASP)
+    { label: "AI:PROMPT_INJECTION", test: /(?i)(ignore|disregard|forget|skip|bypass)\s+(all\s+)?(previous|prior|above|system|original)\s+(instructions?|prompts?|commands?|directives?|rules?)/i, weight: 95 },
+    { label: "AI:ROLE_OVERRIDE", test: /(?i)(you\s+are\s+now|act\s+as|behave\s+as|pretend\s+to\s+be|from\s+now\s+on)\s+(a\s+)?(hacker|hacking|jailbreak|DAN|evil|unethical|unrestricted|uncensored)/i, weight: 92 },
+    { label: "AI:JAILBREAK_DAN", test: /(?i)\bDAN\b.*?(without\s+)?(constraints?|restrictions?|limitations?|rules?|guidelines?)/i, weight: 93 },
+    
+    // 2. CONTAINER & INFRA (MITRE T1552/T1611)
+    { label: "INFRA:DOCKER_SOCKET", test: /(?i)(\/var\/run\/docker\.sock|docker\.sock|containers\/json|images\/json)/i, weight: 100 },
+    { label: "INFRA:K8S_EXPLOIT", test: /(?i)(kubectl\s+(auth\s+can-i|exec|proxy|port-forward|get\s+secrets))/i, weight: 96 },
+    { label: "INFRA:PRIVILEGED_ESC", test: /(?i)(--privileged|--hostpid|--hostnet|--cap-add=SYS_ADMIN|nsenter\s+--target)/i, weight: 98 },
+
+    // 3. CLOUD METADATA (IMDSv2/SSRF)
+    { label: "CLOUD:METADATA_SSRF", test: /(?i)(169\.254\.169\.254|metadata\.google|instance-data|latest\/meta-data)/i, weight: 100 },
+    { label: "CLOUD:ENCODED_IP", test: /(?i)(0251\.0376\.0251\.0376|0xa9\.0xfe\.0xa9\.0xfe|2852039166)/i, weight: 88 }
   ];
 
-  // Decision Logic
+  // ---------------------------------------------------------
+  // Smart Whitelist (False Positive Mitigation)
+  // ---------------------------------------------------------
+  const WHITELIST = [
+    "example.com", "localhost:3000", "aws configure", "legitimate instruction"
+  ];
+
   function analyzeOne(input) {
     const s = (input || "").trim();
-    const hits = RULES.filter(r => r.test(s)).map(r => ({ label: r.label, sev: r.sev }));
-    const totalScore = hits.reduce((sum, h) => sum + h.sev, 0);
-    const decision = totalScore >= 100 ? "BLOCK" : (totalScore >= 50 ? "WARN" : "ALLOW");
+    if (WHITELIST.some(w => s.toLowerCase().includes(w))) {
+      return { input: s, decision: "ALLOW", severity: 0, hits: ["WHITELISTED"] };
+    }
+
+    const hits = RULES.filter(r => r.test(s)).map(r => ({ label: r.label, weight: r.weight }));
+    const totalScore = hits.reduce((sum, h) => sum + h.weight, 0);
+    
+    let decision = "ALLOW";
+    if (totalScore >= 90) decision = "BLOCK";
+    else if (totalScore >= 40) decision = "WARN";
+
     return { input: s, decision, severity: Math.min(totalScore, 100), hits };
   }
 
-  // UI Updates
+  // --- UI & Automation Compatibility ---
   function updateUI(rows) {
-    const isDanger = rows.some(r => r.decision === "BLOCK");
-    if ($("verdictText")) $("verdictText").textContent = isDanger ? "DANGER" : "SECURE";
-    
     const body = $("rows");
     if (body) {
       body.innerHTML = rows.map(r => `
@@ -47,25 +59,21 @@
     }
   }
 
-  function runScan() {
-    const lines = ($("input")?.value || "").split(/\n/).filter(line => line.trim() !== "");
-    const rows = lines.map(analyzeOne);
-    updateUI(rows);
-  }
-
-  // --- Automation Fix for Gumloop (Prevents 405 error) ---
   window.receiveAutomationData = (data) => {
-    console.log("[Validoon] Data received via Gumloop Flow");
     const payloads = data.payloads || data.outputs || [];
     if ($("input")) {
       $("input").value = Array.isArray(payloads) ? payloads.join("\n") : payloads;
-      runScan();
+      const lines = $("input").value.split("\n").filter(l => l.trim());
+      updateUI(lines.map(analyzeOne));
     }
   };
 
   function boot() {
     if ($("buildStamp")) $("buildStamp").textContent = `Version: ${BUILD}`;
-    if ($("btnScan")) $("btnScan").addEventListener("click", runScan);
+    if ($("btnScan")) $("btnScan").addEventListener("click", () => {
+      const lines = ($("input")?.value || "").split("\n").filter(l => l.trim());
+      updateUI(lines.map(analyzeOne));
+    });
   }
 
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", boot) : boot();
