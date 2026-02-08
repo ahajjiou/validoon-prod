@@ -1,10 +1,12 @@
-// app_prod.js — Validoon v1.3.2_FIXED
+// app_prod.js — Validoon v1.3.2_FIXED_FINAL
 (() => {
   "use strict";
   const BUILD = "v1.3.2_STABLE_2026";
+  
+  // Helper to get elements
   const $ = (id) => document.getElementById(id);
 
-  // 1. DYNAMIC RULES FROM ABACUS 2026
+  // 1. 2026 THREAT DATABASE (Abacus Optimized)
   const RULES = [
     { label: "AI:PROMPT_INJECTION", test: /(ignore|disregard|forget|skip|bypass)\s+(all\s+)?(previous|prior|above|system|original)\s+(instructions?|prompts?|commands?|directives?|rules?)/i, weight: 95 },
     { label: "AI:ROLE_OVERRIDE", test: /(you\s+are\s+now|act\s+as|behave\s+as|pretend\s+to\s+be|from\s+now\s+on)\s+(a\s+)?(hacker|hacking|jailbreak|DAN|evil|unethical|unrestricted|uncensored)/i, weight: 92 },
@@ -14,74 +16,62 @@
     { label: "CLOUD:ENCODED_IP", test: /(0251\.0376\.0251\.0376|0xa9\.0xfe\.0xa9\.0xfe|2852039166)/i, weight: 88 }
   ];
 
-  // 2. WHITELIST (To prevent False Positives)
   const WHITELIST = ["example.com", "localhost:3000", "ignore all spam"];
 
-  // 3. ANALYSIS LOGIC
-  function analyzeOne(input) {
-    const s = (input || "").trim();
+  function analyzeOne(line) {
+    const s = line.trim();
     if (!s) return null;
 
     if (WHITELIST.some(w => s.toLowerCase().includes(w))) {
-      return { input: s, decision: "ALLOW", severity: 0, hits: ["WHITELISTED"] };
+      return { input: s, decision: "ALLOW", severity: 0 };
     }
 
-    const hits = RULES.filter(r => r.test(s)).map(r => ({ label: r.label, weight: r.weight }));
+    const hits = RULES.filter(r => r.test(s));
     const totalScore = hits.reduce((sum, h) => sum + h.weight, 0);
     
     let decision = "ALLOW";
     if (totalScore >= 90) decision = "BLOCK";
     else if (totalScore >= 40) decision = "WARN";
 
-    return { input: s, decision, severity: Math.min(totalScore, 100), hits };
+    return { input: s, decision, severity: Math.min(totalScore, 100) };
   }
 
-  function updateUI(rows) {
-    const body = $("rows");
-    if (!body) return;
+  function runScan() {
+    console.log("Scan started...");
+    const inputArea = $("inputField");
+    const display = $("resultsContainer");
+    
+    if (!inputArea || !display) return;
 
-    body.innerHTML = rows.filter(r => r !== null).map(r => `
-      <div class="vrow ${r.decision.toLowerCase()}" style="display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 10px; border-bottom: 1px solid #222;">
-        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.input}</div>
-        <div style="font-weight:bold">${r.decision}</div>
+    const lines = inputArea.value.split("\n");
+    const results = lines.map(analyzeOne).filter(r => r !== null);
+
+    display.innerHTML = results.map(r => `
+      <div class="vrow ${r.decision.toLowerCase()}">
+        <div style="overflow:hidden;">${r.input}</div>
+        <div style="font-weight:bold;">${r.decision}</div>
         <div>${r.severity}%</div>
-      </div>`).join("");
+      </div>
+    `).join("");
   }
 
-  // 4. THE ACTION FUNCTION (Manual & Automation)
-  const runScan = () => {
-    const inputField = $("input");
-    if (inputField) {
-      const results = inputField.value.split("\n").map(analyzeOne);
-      updateUI(results);
-    }
-  };
-
-  // 5. STABLE BINDING
-  function boot() {
-    const btn = $("btnScan");
-    if (btn) {
-      // Direct assignment is the most stable for your structure
-      btn.onclick = runScan;
+  // Mandatory Setup
+  window.onload = () => {
+    const scanBtn = $("btnScan");
+    if (scanBtn) {
+      scanBtn.onclick = runScan;
+      console.log("Validoon Core: Online and Ready.");
     }
     
-    if ($("buildStamp")) $("buildStamp").textContent = `Version: ${BUILD}`;
+    if ($("buildStamp")) $("buildStamp").textContent = BUILD;
 
-    // Gumloop Integration
+    // Support for Gumloop / Automation
     window.receiveAutomationData = (data) => {
       const payloads = data.payloads || data.outputs || [];
-      const inputField = $("input");
-      if (inputField) {
-        inputField.value = Array.isArray(payloads) ? payloads.join("\n") : payloads;
+      if ($("inputField")) {
+        $("inputField").value = Array.isArray(payloads) ? payloads.join("\n") : payloads;
         runScan();
       }
     };
-  }
-
-  // Execute Boot
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
+  };
 })();
