@@ -2,29 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Validoon Sovereign v1.3.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validoon Sovereign v1.3.2 | 2026 Security Engine</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
-        textarea { width: 100%; height: 150px; background: #1a1a1a; color: #0f0; border: 1px solid #333; padding: 10px; }
-        button { background: #e74c3c; color: white; border: none; padding: 15px 30px; cursor: pointer; margin-top: 10px; font-weight: bold; }
-        button:hover { background: #c0392b; }
-        .vrow { border-bottom: 1px solid #222; padding: 10px; display: grid; grid-template-columns: 3fr 1fr 1fr; }
-        .block { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
+        :root { --bg: #0a0a0a; --panel: #141414; --accent: #e74c3c; --text: #e0e0e0; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+        textarea { width: 100%; height: 200px; background: var(--panel); color: #00ff00; border: 1px solid #333; padding: 15px; font-family: monospace; border-radius: 4px; box-sizing: border-box; }
+        .controls { margin-top: 15px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: var(--accent); color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.3s; }
+        button:hover { background: #c0392b; transform: translateY(-2px); }
+        #results { margin-top: 30px; background: var(--panel); border-radius: 4px; overflow: hidden; }
+        .vrow { display: grid; grid-template-columns: 3fr 1fr 1fr; padding: 12px 20px; border-bottom: 1px solid #222; font-size: 14px; }
+        .vrow.header { background: #1a1a1a; font-weight: bold; color: var(--accent); }
+        .block { color: #ff4d4d; background: rgba(255, 77, 77, 0.05); }
         .allow { color: #2ecc71; }
         .warn { color: #f1c40f; }
-        #buildStamp { font-size: 12px; color: #555; margin-top: 20px; display: block; }
+        .footer { margin-top: 30px; font-size: 12px; color: #444; text-align: center; }
     </style>
 </head>
 <body>
-    <h2>Validoon v1.3.2 <small id="buildStamp"></small></h2>
+
+<div class="container">
+    <h1>Validoon Sovereign Security</h1>
+    <p>Enterprise deterministic scanner powered by 2026 Threat Intelligence.</p>
     
-    <textarea id="inputField" placeholder="Paste your payloads here..."></textarea>
-    <br>
-    <button id="btnScan">EXECUTE SCAN</button>
+    <textarea id="inputField" placeholder="Paste your payloads or logs here for 2026 threat analysis..."></textarea>
+    
+    <div class="controls">
+        <button id="btnScan">EXECUTE SCAN</button>
+        <div id="statusIndicator">System: <span style="color:#2ecc71">Ready</span></div>
+    </div>
 
-    <div id="resultsContainer" style="margin-top:20px; border: 1px solid #333;">
+    <div id="results">
+        <div class="vrow header">
+            <div>Payload / Input</div>
+            <div>Verdict</div>
+            <div>Risk Score</div>
         </div>
+        <div id="resultsBody">
+            </div>
+    </div>
 
-    <script src="app_prod.js"></script>
+    <div class="footer">
+        <span id="buildStamp">Version: Loading...</span>
+    </div>
+</div>
+
+<script src="app_prod.js"></script>
+
 </body>
 </html>
