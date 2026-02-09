@@ -1,42 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Validoon Security Dashboard v1.2.8</title>
-    <style>
-        body { background: #0a0a0a; color: #fff; font-family: 'Courier New', monospace; padding: 20px; }
-        h2 { color: #e74c3c; text-transform: uppercase; letter-spacing: 2px; }
-        textarea { width: 100%; height: 150px; background: #111; color: #0f0; border: 1px solid #333; padding: 10px; font-size: 14px; }
-        button { background: #e74c3c; color: white; border: none; padding: 15px 35px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #c0392b; box-shadow: 0 0 10px #e74c3c; }
-        .results-table { width: 100%; margin-top: 20px; border-collapse: collapse; border: 1px solid #333; }
-        .vrow { border-bottom: 1px solid #222; display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 10px; }
-        .header { background: #1a1a1a; font-weight: bold; color: #aaa; }
-        .block { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
-        .allow { color: #2ecc71; }
-        .warn { color: #f1c40f; }
-        #buildStamp { font-size: 11px; color: #444; margin-top: 30px; display: block; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Validoon — Local Security Engine</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h2>Validoon Security Dashboard</h2>
-    <p style="color: #666;">Sovereign Security Engine | Stable 1.2.8 UI</p>
-
-    <textarea id="input" placeholder="Enter payloads for analysis..."></textarea>
-    <br>
-    <button id="btnScan">EXECUTE SCAN</button>
-
-    <div class="results-table">
-        <div class="vrow header">
-            <div>Payload Path / Content</div>
-            <div>Verdict</div>
-            <div>Risk Level</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-badge">V</div>
+        <div class="brand-text">
+          <div class="brand-name">Validoon</div>
+          <div class="brand-sub">Local Decision Engine — AI & Cloud Threat Intel 2026</div>
         </div>
-        <div id="rows"></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A (Cloud)</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B (AI)</button>
+        <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
+        <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
+      </div>
     </div>
 
-    <span id="buildStamp"></span>
+    <div class="grid">
+      <div class="card card-lg">
+        <div class="h-title">Input Stream</div>
+        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
+        <div class="footer-note" id="buildStamp"></div>
+      </div>
 
-    <script src="app_prod.js"></script>
+      <div class="card card-lg">
+        <div id="verdictBox" class="verdict verdict-secure">
+          <div class="verdict-title" id="verdictText">READY</div>
+          <div class="stats">
+            <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
+            <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
+            <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
+            <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
+          </div>
+        </div>
+        <div class="signals">
+          <div class="signals-title">Active Signals</div>
+          <div id="signals" class="chips"></div>
+        </div>
+      </div>
+
+      <div class="card card-xl">
+        <div class="table">
+          <div class="thead">
+            <div>Input Content</div>
+            <div>Decision</div>
+            <div>Sev</div>
+            <div>Entropy</div>
+          </div>
+          <div id="rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app_prod.js" defer></script>
 </body>
 </html>
