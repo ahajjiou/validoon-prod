@@ -2,32 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Validoon Security Dashboard</title>
+    <title>Validoon Security Dashboard v1.2.8</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
-        textarea { width: 100%; height: 150px; background: #1a1a1a; color: #0f0; border: 1px solid #333; padding: 10px; font-family: monospace; }
-        button { background: #e74c3c; color: white; border: none; padding: 15px 30px; cursor: pointer; margin-top: 10px; font-weight: bold; border-radius: 4px; }
-        button:hover { background: #c0392b; }
-        .vrow { border-bottom: 1px solid #222; padding: 10px; display: grid; grid-template-columns: 2fr 1fr 1fr; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Courier New', monospace; padding: 20px; }
+        h2 { color: #e74c3c; text-transform: uppercase; letter-spacing: 2px; }
+        textarea { width: 100%; height: 150px; background: #111; color: #0f0; border: 1px solid #333; padding: 10px; font-size: 14px; }
+        button { background: #e74c3c; color: white; border: none; padding: 15px 35px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #c0392b; box-shadow: 0 0 10px #e74c3c; }
+        .results-table { width: 100%; margin-top: 20px; border-collapse: collapse; border: 1px solid #333; }
+        .vrow { border-bottom: 1px solid #222; display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 10px; }
+        .header { background: #1a1a1a; font-weight: bold; color: #aaa; }
         .block { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
         .allow { color: #2ecc71; }
         .warn { color: #f1c40f; }
-        #buildStamp { font-size: 12px; color: #444; margin-top: 20px; display: block; }
+        #buildStamp { font-size: 11px; color: #444; margin-top: 30px; display: block; }
     </style>
 </head>
 <body>
     <h2>Validoon Security Dashboard</h2>
-    <p>Sovereign Deterministic Scanner (2026 Stable Build)</p>
+    <p style="color: #666;">Sovereign Security Engine | Stable 1.2.8 UI</p>
 
-    <textarea id="input" placeholder="Paste payloads here..."></textarea>
+    <textarea id="input" placeholder="Enter payloads for analysis..."></textarea>
     <br>
     <button id="btnScan">EXECUTE SCAN</button>
 
-    <div id="results" style="margin-top:20px; border: 1px solid #333;">
-        <div class="vrow" style="font-weight:bold; background:#111;">
-            <div>Payload</div>
+    <div class="results-table">
+        <div class="vrow header">
+            <div>Payload Path / Content</div>
             <div>Verdict</div>
-            <div>Risk Score</div>
+            <div>Risk Level</div>
         </div>
         <div id="rows"></div>
     </div>
