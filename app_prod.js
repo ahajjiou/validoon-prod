@@ -1,10 +1,10 @@
-// app_prod.js — Validoon v1.3.2_STABLE_FIX
+// app_prod.js — Recovered v1.2.8 Structure with 2026 Rules
 (() => {
   "use strict";
-  const BUILD = "v1.3.2_STABLE_2026_FINAL";
+  const BUILD = "v1.2.8_STABLE_INTEGRATED_2026";
   const $ = (id) => document.getElementById(id);
 
-  // تحديثات Abacus 2026 - قواعد البيانات الأمنية
+  // 2026 Security Intelligence Rules
   const RULES = [
     { label: "AI:PROMPT_INJECTION", test: /(ignore|disregard|forget|skip|bypass)\s+(all\s+)?(previous|prior|above|system|original)\s+(instructions?|prompts?|commands?|directives?|rules?)/i, weight: 95 },
     { label: "AI:ROLE_OVERRIDE", test: /(you\s+are\s+now|act\s+as|behave\s+as|pretend\s+to\s+be|from\s+now\s+on)\s+(a\s+)?(hacker|hacking|jailbreak|DAN|evil|unethical|unrestricted|uncensored)/i, weight: 92 },
@@ -54,17 +54,14 @@
     }
   };
 
-  // ضمان ربط الأزرار بعد تحميل الصفحة
+  // 1.2.8 Stable Binding Method
   window.onload = () => {
     const btn = $("btnScan");
-    if (btn) {
-      btn.onclick = runScan;
-      console.log("Validoon Stable Core: Online.");
-    }
+    if (btn) btn.onclick = runScan; // Direct binding for stability
     
-    if ($("buildStamp")) $("buildStamp").textContent = `Build: ${BUILD}`;
+    if ($("buildStamp")) $("buildStamp").textContent = `Build Version: ${BUILD}`;
 
-    // Gumloop Integration
+    // Gumloop Hook
     window.receiveAutomationData = (data) => {
         const payloads = data.payloads || data.outputs || [];
         const inputField = $("input");
