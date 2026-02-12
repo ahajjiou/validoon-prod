@@ -1,4 +1,4 @@
-// app_prod.js — Validoon Enterprise Build v1.3.0_FULL_STABLE_NO_SECRETS
+// app_prod.js — Validoon Enterprise Build v1.3.0_FULL_STABLE
 // NOTE: This build avoids real secret patterns (no sk_live_, ghp_, AIza, etc.)
 (() => {
   "use strict";
@@ -294,4 +294,5 @@
     ? document.addEventListener("DOMContentLoaded", boot)
     : boot();
 })();
+
 
