@@ -3,7 +3,7 @@
 (() => {
   "use strict";
 
-  const BUILD = "prod_v1.3.0_FULL_STABLE_NO_SECRETS";
+  const BUILD = "prod_v1.3.0_FULL_STABLE";
   const $ = (id) => document.getElementById(id);
 
   // ----------------------------
@@ -294,3 +294,4 @@
     ? document.addEventListener("DOMContentLoaded", boot)
     : boot();
 })();
+
