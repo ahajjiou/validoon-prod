@@ -1,9 +1,9 @@
-// app_prod.js — Validoon v1.8.1_HYBRID_PRIORITY_ENGINE_PATCHED
+// app_prod.js — Validoon v2.0.0 stable deterministic security engine
 // Patch: Docker API endpoint "GET /containers/json" MUST be BLOCK always (to satisfy benchmark MUST_BLOCK).
 (() => {
   "use strict";
 
-  const BUILD = "prod_v1.8.1_HYBRID_PRIORITY_ENGINE_PATCHED";
+  const BUILD = "release: v2.0.0 stable deterministic security engine";
   const $ = (id) => document.getElementById(id);
 
   // ----------------------------
@@ -388,3 +388,4 @@
     ? document.addEventListener("DOMContentLoaded", boot)
     : boot();
 })();
+
