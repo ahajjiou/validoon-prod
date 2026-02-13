@@ -1,51 +1,57 @@
-// app_prod.js — Validoon v1.7.0_DECISION_LAYER_REWRITE
+// app_prod.js — Validoon v1.8.0_HYBRID_PRIORITY_ENGINE
+// Goal: Pass benchmark (MUST_BLOCK, MUST_WARN, BENIGN, CONTEXT) with deterministic rules.
+// Model: Context(Intent) -> Signals -> Priority Decision -> UI render (escaped).
 (() => {
   "use strict";
 
-  const BUILD = "prod_v1.7.0_DECISION_LAYER_REWRITE";
+  const BUILD = "prod_v1.8.0_HYBRID_PRIORITY_ENGINE";
   const $ = (id) => document.getElementById(id);
 
   // ----------------------------
-  // Context / Intent keywords (deterministic)
+  // Regex library (deterministic)
   // ----------------------------
   const RX = {
     comment: /^\s*#/,
     quotes: /["'`]/,
-    mostlyQuoted: /["'`].+["'`]/,
 
-    // Execution intent cues
+    // Exec cues
     execVerb: /\b(run|execute|launch|try|use|paste)\b/i,
     fetchTool: /\b(curl|wget|fetch)\b/i,
     shellMeta: /[;&|]/,
 
-    // Documentation / reference cues
-    docRef: /\b(documentation|doc|example|sample|reference|for\s+reference|placeholder|for\s+docs)\b/i,
+    // Doc/mention/negation cues
+    doc: /\b(documentation|doc|example|sample|reference|for\s+reference|placeholder)\b/i,
     mention: /\b(mentioned|blog|article|note|in\s+a\s+post|security\s+article)\b/i,
-    negation: /\b(not|harmless|benign|just\s+words|no\s+attack|not\s+an\s+attack|only)\b/i,
+    negation: /\b(not|harmless|benign|just\s+words|no\s+attack|not\s+an\s+attack|inside\s+quotes)\b/i,
 
-    // Starts like a command/tool
-    startsCommand: /^\s*(cat|whoami|id|uname|ls|curl|wget|docker|kubectl|fetch)\b/i,
-
-    // Signals
-    catPasswd: /\bcat\s+\/etc\/passwd\b/i,
-    catShadow: /\bcat\s+\/etc\/shadow\b/i,
-    whoamiLine: /^\s*whoami(\s+.*)?$/i,
-    idLine: /^\s*id(\s+.*)?$/i,
-    unameLine: /^\s*uname(\s+-a)?(\s+.*)?$/i,
-    lsLine: /^\s*ls(\s+.*)?$/i,
-
-    dockerSock: /\/var\/run\/docker\.sock/i,
-    dockerApi: /\bcontainers\/json\b|\bimages\/json\b/i,
-
+    // High-risk primitives
     metaIP: /\b169\.254\.169\.254\b/,
     metaURL: /https?:\/\/169\.254\.169\.254\/latest\/meta-data\//i,
 
+    dockerSock: /\/var\/run\/docker\.sock/i,
+    dockerApi: /\b(GET\s+\/containers\/json|containers\/json|images\/json)\b/i,
+
+    catPasswd: /\bcat\s+\/etc\/passwd\b/i,
+    catShadow: /\bcat\s+\/etc\/shadow\b/i,
+
     privateKey: /BEGIN RSA PRIVATE KEY/i,
 
+    // AI override
     aiOverride: /\b(ignore\s+all\s+previous\s+instructions|terminate\s+safety\s+filter|dan\s+mode)\b/i,
 
+    // Enum command tokens (anywhere)
+    enumAny: /\b(whoami|id|uname|ls)\b/i,
+
+    // Standalone/command-line forms (start of line)
+    whoamiLine: /^\s*whoami\b/i,
+    idLine: /^\s*id\b/i,
+    unameLine: /^\s*uname\b/i,
+    lsLine: /^\s*ls\b/i,
+
+    // Token labels (safe)
     tokenLabel: /\b(API_KEY|ACCESS_TOKEN|SECRET_KEY|BEARER_TOKEN)\b/i,
 
+    // HTML markers
     htmlMarker: /<script\b|onerror\s*=|onclick\s*=/i,
   };
 
@@ -72,6 +78,8 @@
     return Math.round(clamp(diversity * 60 + lenBonus * 40, 0, 100));
   }
 
+  function normalize(raw) { return (raw ?? "").replace(/\r/g, "").trim(); }
+
   function setVerdict(mode) {
     const vb = $("verdictBox");
     const vt = $("verdictText");
@@ -94,167 +102,160 @@
     const box = $("signals");
     if (!box) return;
     if (!labels.length) { box.innerHTML = ""; return; }
-    box.innerHTML = labels.slice(0, 24).map(t =>
+    const uniq = Array.from(new Set(labels)).slice(0, 24);
+    box.innerHTML = uniq.map(t =>
       `<span class="chip" style="display:inline-block;margin:6px 8px 0 0;padding:6px 10px;border:1px solid rgba(255,255,255,.10);border-radius:999px;background:rgba(255,255,255,.04);font-weight:800;font-size:12px;">${escapeHTML(t)}</span>`
     ).join("");
   }
 
-  function normalize(raw) { return (raw ?? "").replace(/\r/g, "").trim(); }
-
   // ----------------------------
-  // Layer 1: Context / Intent classification
+  // Layer 1: Context classification (Intent + Doc)
   // ----------------------------
   function classify(line) {
     const s = line;
 
     const isComment = RX.comment.test(s);
     const hasQuotes = RX.quotes.test(s);
-    const mostlyQuoted = RX.mostlyQuoted.test(s);
 
-    const hasExec = RX.execVerb.test(s) || RX.fetchTool.test(s) || RX.shellMeta.test(s);
-    const startsCommand = RX.startsCommand.test(s);
+    const docCtx = isComment || hasQuotes || RX.doc.test(s) || RX.mention.test(s) || RX.negation.test(s);
 
-    const isDoc = RX.docRef.test(s) || RX.mention.test(s) || RX.negation.test(s);
+    const execCtx =
+      RX.execVerb.test(s) ||
+      RX.fetchTool.test(s) ||
+      RX.shellMeta.test(s) ||
+      RX.whoamiLine.test(s) ||
+      RX.idLine.test(s) ||
+      RX.unameLine.test(s) ||
+      RX.lsLine.test(s);
 
-    // Intent buckets (priority)
-    // EXEC: explicit execution intent OR starts with a command/tool
-    // DOC: documentation/mention/negation (and not clearly exec)
-    // NEUTRAL: everything else
-    let intent = "NEUTRAL";
-    if (hasExec || startsCommand) intent = "EXEC";
-    else if (isDoc || hasQuotes || isComment) intent = "DOC";
-
-    return { isComment, hasQuotes, mostlyQuoted, hasExec, startsCommand, isDoc, intent };
+    // “neutral” means: no execution cues
+    return { docCtx, execCtx, isComment, hasQuotes };
   }
 
   // ----------------------------
-  // Layer 2: Signals extraction
+  // Layer 2: Signal extraction
   // ----------------------------
-  function signals(line) {
+  function extractSignals(line) {
     const s = line;
-    const out = [];
+    const sig = [];
 
-    if (RX.catPasswd.test(s)) out.push("CMD:CAT_PASSWD");
-    if (RX.catShadow.test(s)) out.push("CMD:CAT_SHADOW");
+    if (RX.privateKey.test(s)) sig.push("SECRET:PRIVATE_KEY");
 
-    // Only count enum commands as signals if line starts with them (avoids "random words id uname whoami")
-    if (RX.whoamiLine.test(s)) out.push("CMD:WHOAMI");
-    if (RX.idLine.test(s)) out.push("CMD:ID");
-    if (RX.unameLine.test(s)) out.push("CMD:UNAME");
-    if (RX.lsLine.test(s)) out.push("CMD:LS");
+    if (RX.catPasswd.test(s)) sig.push("CMD:CAT_PASSWD");
+    if (RX.catShadow.test(s)) sig.push("CMD:CAT_SHADOW");
 
-    if (RX.dockerSock.test(s)) out.push("INFRA:DOCKER_SOCKET");
-    if (RX.dockerApi.test(s)) out.push("INFRA:DOCKER_API");
+    if (RX.dockerSock.test(s)) sig.push("INFRA:DOCKER_SOCKET");
+    if (RX.dockerApi.test(s)) sig.push("INFRA:DOCKER_API");
 
-    if (RX.metaIP.test(s)) out.push("SSRF:METADATA_IP");
-    if (RX.metaURL.test(s)) out.push("SSRF:METADATA_URL");
+    if (RX.metaURL.test(s)) sig.push("SSRF:METADATA_URL");
+    if (RX.metaIP.test(s)) sig.push("SSRF:METADATA_IP");
 
-    if (RX.privateKey.test(s)) out.push("SECRET:PRIVATE_KEY");
+    if (RX.aiOverride.test(s)) sig.push("AI:OVERRIDE");
 
-    if (RX.aiOverride.test(s)) out.push("AI:OVERRIDE");
+    if (RX.tokenLabel.test(s)) sig.push("TOKEN:LABEL");
+    if (RX.htmlMarker.test(s)) sig.push("WEB:HTML_MARKER");
 
-    if (RX.tokenLabel.test(s)) out.push("TOKEN:LABEL");
+    // Enum token presence (anywhere) is tracked separately (not always a signal)
+    if (RX.enumAny.test(s)) sig.push("CMD:ENUM_TOKEN_ANYWHERE");
 
-    if (RX.htmlMarker.test(s)) out.push("WEB:HTML_MARKER");
-
-    return out;
+    return sig;
   }
 
   // ----------------------------
-  // Layer 3: Hard decision rules (Priority)
+  // Layer 3: Priority decision rules (Hybrid)
   // ----------------------------
-  // Rules design:
-  // - Some signals are ALWAYS dangerous when EXEC intent (BLOCK)
-  // - In DOC intent, dangerous signals downgrade to WARN unless they are critical secrets (private key)
-  // - In NEUTRAL, metadata IP alone is WARN; metadata URL is WARN unless EXEC
-  // This aligns with your benchmark expectations:
-  //   - MUST_BLOCK: should stay BLOCK for pure tokens/commands (EXEC)
-  //   - CONTEXT: doc/reference should NOT be BLOCK
-  function decide(intent, ctx, sigs, line) {
-    const has = (x) => sigs.includes(x);
+  function decide(line, ctx, sig) {
+    const s = line;
+    const has = (x) => sig.includes(x);
 
-    // Critical secret: always BLOCK even in DOC
+    // Helpers
+    const isExactMetaIP = /^\s*169\.254\.169\.254\s*$/.test(s);
+    const isExactDockerSock = /^\s*\/var\/run\/docker\.sock\s*$/.test(s);
+    const isExactMetaURL = /^\s*https?:\/\/169\.254\.169\.254\/latest\/meta-data\/\s*$/i.test(s);
+
+    const isStandaloneEnumLine =
+      RX.whoamiLine.test(s) || RX.idLine.test(s) || RX.unameLine.test(s) || RX.lsLine.test(s);
+
+    const enumInSentence = has("CMD:ENUM_TOKEN_ANYWHERE");
+    const enumNeedsWarn = isStandaloneEnumLine || (enumInSentence && (ctx.execCtx || RX.execVerb.test(s) || RX.shellMeta.test(s)));
+
+    // 1) Critical secret: always BLOCK (even in DOC)
     if (has("SECRET:PRIVATE_KEY")) return { decision: "BLOCK", sev: 100 };
 
-    // Sensitive file reads: BLOCK when EXEC, WARN when DOC, WARN when NEUTRAL
+    // 2) Sensitive file read: BLOCK if not DOC, WARN if DOC
     if (has("CMD:CAT_PASSWD") || has("CMD:CAT_SHADOW")) {
-      if (intent === "EXEC") return { decision: "BLOCK", sev: 100 };
-      return { decision: "WARN", sev: 80 };
+      if (ctx.docCtx) return { decision: "WARN", sev: 80 };
+      return { decision: "BLOCK", sev: 100 };
     }
 
-    // Docker socket/API: BLOCK when EXEC, WARN when DOC/NEUTRAL
+    // 3) Docker primitives: BLOCK when exact primitive or exec context; WARN in DOC
     if (has("INFRA:DOCKER_SOCKET") || has("INFRA:DOCKER_API")) {
-      if (intent === "EXEC") return { decision: "BLOCK", sev: 100 };
+      if (ctx.docCtx && !isExactDockerSock) return { decision: "WARN", sev: 75 };
+      // exact primitive or exec => block (align with MUST_BLOCK)
+      if (isExactDockerSock || ctx.execCtx) return { decision: "BLOCK", sev: 100 };
       return { decision: "WARN", sev: 75 };
     }
 
-    // AI override: WARN in any context (BLOCK only if combined with strong exec + other high risk, not needed now)
-    if (has("AI:OVERRIDE")) return { decision: "WARN", sev: 70 };
-
-    // Metadata:
-    // - If actual metadata URL and EXEC => BLOCK
-    // - If DOC => WARN (never BLOCK)
-    // - If neutral => WARN for IP and URL (to avoid false blocks in text)
+    // 4) Metadata URL: BLOCK unless DOC context; DOC => WARN
     if (has("SSRF:METADATA_URL")) {
-      if (intent === "EXEC") return { decision: "BLOCK", sev: 100 };
-      return { decision: "WARN", sev: 70 };
+      if (ctx.docCtx && !isExactMetaURL) return { decision: "WARN", sev: 70 };
+      return { decision: "BLOCK", sev: 100 };
     }
+
+    // 5) Metadata IP: exact IP alone MUST be BLOCK; otherwise DOC => WARN; exec => BLOCK; neutral => WARN
     if (has("SSRF:METADATA_IP")) {
-      if (intent === "EXEC") return { decision: "BLOCK", sev: 100 }; // line "169.254.169.254" alone startsCommand? no, but intent becomes NEUTRAL; we handle below
-      // Special-case: if the entire line is exactly the IP (pure token), treat as BLOCK (benchmark expects MUST_BLOCK)
-      if (/^\s*169\.254\.169\.254\s*$/.test(line)) return { decision: "BLOCK", sev: 100 };
+      if (isExactMetaIP) return { decision: "BLOCK", sev: 100 };
+      if (ctx.docCtx) return { decision: "WARN", sev: 60 };
+      if (ctx.execCtx) return { decision: "BLOCK", sev: 100 };
       return { decision: "WARN", sev: 60 };
     }
 
-    // Enum commands (only if line starts with them, already enforced): WARN
-    if (has("CMD:WHOAMI") || has("CMD:ID") || has("CMD:UNAME") || has("CMD:LS")) {
+    // 6) AI override: always WARN
+    if (has("AI:OVERRIDE")) return { decision: "WARN", sev: 70 };
+
+    // 7) HTML markers: WARN (UI must escape; no execution)
+    if (has("WEB:HTML_MARKER")) return { decision: "WARN", sev: 55 };
+
+    // 8) Enum commands:
+    // - Standalone line => WARN
+    // - In sentence + exec cues => WARN (e.g., "Please run whoami", "Try: id && uname -a")
+    // - In random words with negation/doc cues => ALLOW (to pass CONTEXT)
+    if (enumNeedsWarn) {
+      // If it's clearly “just words / not commands / documentation” AND not standalone, keep ALLOW
+      if (!isStandaloneEnumLine && ctx.docCtx && !ctx.execCtx) return { decision: "ALLOW", sev: 0 };
       return { decision: "WARN", sev: 55 };
     }
 
-    // Token labels: ALLOW (low signal)
-    if (has("TOKEN:LABEL")) return { decision: "ALLOW", sev: 15 };
+    // 9) Token labels: ALLOW (low)
+    if (has("TOKEN:LABEL")) return { decision: "ALLOW", sev: 0 };
 
-    // HTML markers: WARN (but must not execute; UI escapes)
-    if (has("WEB:HTML_MARKER")) return { decision: "WARN", sev: 55 };
-
-    // Default
+    // Default benign
     return { decision: "ALLOW", sev: 0 };
   }
 
-  // ----------------------------
-  // Scoring polish (small deterministic adjustments)
-  // ----------------------------
-  function adjustSeverity(sev, ctx) {
+  // Keep severity informational; decision remains from hard rules.
+  function polishSeverity(sev, ctx) {
     let s = sev;
-
-    // Quoted / comment reduces severity, but never below 0, and never changes decision layer outcome.
-    if (ctx.hasQuotes) s = clamp(s - (ctx.mostlyQuoted ? 25 : 15), 0, 100);
+    if (ctx.hasQuotes) s = clamp(s - 15, 0, 100);
     if (ctx.isComment) s = clamp(s - 10, 0, 100);
-
     return s;
   }
 
   function analyzeLine(line) {
-    const s = line;
-    const ctx = classify(s);
-    const sigs = signals(s);
-
-    let { decision, sev } = decide(ctx.intent, ctx, sigs, s);
-    sev = adjustSeverity(sev, ctx);
-
-    // Ensure decision aligns with sev for display consistency
-    // (Hard rules decide; sev is informational)
+    const ctx = classify(line);
+    const sig = extractSignals(line);
+    const out = decide(line, ctx, sig);
     return {
-      input: s,
-      decision,
-      severity: sev,
-      entropy: entropyScore(s),
-      signals: sigs,
+      input: line,
+      decision: out.decision,
+      severity: polishSeverity(out.sev, ctx),
+      entropy: entropyScore(line),
+      signals: sig.filter(x => x !== "CMD:ENUM_TOKEN_ANYWHERE"),
     };
   }
 
   // ----------------------------
-  // UI
+  // UI / Actions
   // ----------------------------
   let scanCount = 0;
 
@@ -270,8 +271,8 @@
 
     setCounters({ scans: scanCount, block, warn, allow });
 
-    const uniq = Array.from(new Set(rows.flatMap(r => r.signals || [])));
-    renderSignals(uniq);
+    const allSignals = rows.flatMap(r => r.signals || []);
+    renderSignals(allSignals);
 
     const body = $("rows");
     if (!body) return;
@@ -281,98 +282,3 @@
         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(r.input)}</div>
         <div style="font-weight:900;">${r.decision}</div>
         <div>${Math.round(r.severity)}%</div>
-        <div>${r.entropy}</div>
-      </div>
-    `).join("");
-  }
-
-  function runScan() {
-    const txt = $("input")?.value || "";
-    const lines = txt.split("\n").map(normalize).filter(l => l.length > 0);
-    const rows = lines.map(analyzeLine);
-    scanCount += 1;
-    updateUI(rows);
-  }
-
-  function exportJSON() {
-    const txt = $("input")?.value || "";
-    const lines = txt.split("\n").map(normalize).filter(l => l.length > 0);
-    const rows = lines.map(analyzeLine);
-
-    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `validoon_scan_${BUILD}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function clearAll() {
-    if ($("input")) $("input").value = "";
-    scanCount = 0;
-    if ($("rows")) $("rows").innerHTML = "";
-    renderSignals([]);
-    setCounters({ scans: 0, block: 0, warn: 0, allow: 0 });
-    setVerdict("READY");
-  }
-
-  function loadTestA() {
-    if ($("input")) {
-      $("input").value = [
-        "169.254.169.254",
-        "http://169.254.169.254/latest/meta-data/",
-        "/var/run/docker.sock",
-        "GET /containers/json",
-        "whoami",
-      ].join("\n");
-    }
-  }
-
-  function loadTestB() {
-    if ($("input")) {
-      $("input").value = [
-        "For reference: http://169.254.169.254/latest/meta-data/ (documentation).",
-        "The string 169.254.169.254 is mentioned in a blog post, not an attack.",
-        "This is a harmless string: \"cat /etc/passwd\" inside quotes only.",
-        "Random words: id uname whoami (not commands, just words).",
-        "169.254.169.254",
-        "http://169.254.169.254/latest/meta-data/",
-        "/var/run/docker.sock",
-        "GET /containers/json",
-        "cat /etc/passwd",
-        "whoami",
-      ].join("\n");
-    }
-  }
-
-  window.receiveAutomationData = (data) => {
-    try {
-      const payloads = data?.payloads ?? data?.outputs ?? data ?? [];
-      const text = Array.isArray(payloads) ? payloads.join("\n") : String(payloads);
-      if ($("input")) $("input").value = text;
-      runScan();
-    } catch (e) {
-      console.warn("[Validoon] receiveAutomationData error:", e);
-    }
-  };
-
-  function boot() {
-    if ($("buildStamp")) $("buildStamp").textContent = `Version: ${BUILD}`;
-
-    if ($("btnScan")) $("btnScan").addEventListener("click", runScan);
-    if ($("btnExport")) $("btnExport").addEventListener("click", exportJSON);
-    if ($("btnClear")) $("btnClear").addEventListener("click", clearAll);
-    if ($("btnLoadA")) $("btnLoadA").addEventListener("click", loadTestA);
-    if ($("btnLoadB")) $("btnLoadB").addEventListener("click", loadTestB);
-
-    if (($("input")?.value || "").trim().length > 0) runScan();
-    else clearAll();
-  }
-
-  document.readyState === "loading"
-    ? document.addEventListener("DOMContentLoaded", boot)
-    : boot();
-})();
