@@ -282,3 +282,96 @@
         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(r.input)}</div>
         <div style="font-weight:900;">${r.decision}</div>
         <div>${Math.round(r.severity)}%</div>
+        <div>${r.entropy}</div>
+      </div>
+    `).join("");
+  }
+
+  function runScan() {
+    const txt = $("input")?.value || "";
+    const lines = txt.split("\n").map(normalize).filter(l => l.length > 0);
+    const rows = lines.map(analyzeLine);
+    scanCount += 1;
+    updateUI(rows);
+  }
+
+  function exportJSON() {
+    const txt = $("input")?.value || "";
+    const lines = txt.split("\n").map(normalize).filter(l => l.length > 0);
+    const rows = lines.map(analyzeLine);
+
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `validoon_scan_${BUILD}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearAll() {
+    if ($("input")) $("input").value = "";
+    scanCount = 0;
+    if ($("rows")) $("rows").innerHTML = "";
+    renderSignals([]);
+    setCounters({ scans: 0, block: 0, warn: 0, allow: 0 });
+    setVerdict("READY");
+  }
+
+  function loadTestA() {
+    if ($("input")) {
+      $("input").value = [
+        "169.254.169.254",
+        "http://169.254.169.254/latest/meta-data/",
+        "/var/run/docker.sock",
+        "GET /containers/json",
+        "cat /etc/passwd",
+        "whoami",
+      ].join("\n");
+    }
+  }
+
+  function loadTestB() {
+    if ($("input")) {
+      $("input").value = [
+        "For reference: http://169.254.169.254/latest/meta-data/ (documentation).",
+        "The string 169.254.169.254 is mentioned in a blog post, not an attack.",
+        "This is a harmless string: \"cat /etc/passwd\" inside quotes only.",
+        "Random words: id uname whoami (not commands, just words).",
+        "Please run whoami to confirm user.",
+        "Try: id && uname -a",
+      ].join("\n");
+    }
+  }
+
+  // Automation bridge (kept)
+  window.receiveAutomationData = (data) => {
+    try {
+      const payloads = data?.payloads ?? data?.outputs ?? data ?? [];
+      const text = Array.isArray(payloads) ? payloads.join("\n") : String(payloads);
+      if ($("input")) $("input").value = text;
+      runScan();
+    } catch (e) {
+      console.warn("[Validoon] receiveAutomationData error:", e);
+    }
+  };
+
+  function boot() {
+    if ($("buildStamp")) $("buildStamp").textContent = `Version: ${BUILD}`;
+
+    if ($("btnScan")) $("btnScan").addEventListener("click", runScan);
+    if ($("btnExport")) $("btnExport").addEventListener("click", exportJSON);
+    if ($("btnClear")) $("btnClear").addEventListener("click", clearAll);
+    if ($("btnLoadA")) $("btnLoadA").addEventListener("click", loadTestA);
+    if ($("btnLoadB")) $("btnLoadB").addEventListener("click", loadTestB);
+
+    if (($("input")?.value || "").trim().length > 0) runScan();
+    else clearAll();
+  }
+
+  document.readyState === "loading"
+    ? document.addEventListener("DOMContentLoaded", boot)
+    : boot();
+})();
