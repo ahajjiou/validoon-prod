@@ -1,6 +1,7 @@
-// app_prod.js — Validoon release: v2.1.0 stable deterministic security engine
+// app_prod.js — Validoon release: v2.2.0 stable deterministic security engine
 // + Executive Risk Summary + Integrity Badge + Explainability
-// + Context Shield Layer + Multi-line Context Aggregation (BEST upgrade)
+// + Multi-line Context Aggregation
+// + Top-3 Fix Panel (Auto-fix + Copy safe version)  ✅
 // Deterministic • Local • Versioned
 (() => {
   "use strict";
@@ -8,7 +9,7 @@
   // ------------------------------------------------------------
   // BUILD STAMP
   // ------------------------------------------------------------
-  const BUILD = "release: v2.1.0 stable deterministic security engine (multiline-context)";
+  const BUILD = "release: v2.2.0 stable deterministic security engine (top3-fix + multiline-context)";
   const $ = (id) => document.getElementById(id);
 
   // ------------------------------------------------------------
@@ -37,7 +38,7 @@
     return Math.round(h * 10) / 10;
   }
 
-  // Simple deterministic FNV-1a hash (32-bit)
+  // FNV-1a hash (32-bit)
   function fnv1a32(str) {
     let h = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
@@ -56,8 +57,38 @@
     return Array.from(new Set(arr));
   }
 
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  async function copyText(text) {
+    const t = String(text ?? "");
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(t);
+        return true;
+      }
+    } catch (_) {}
+    // Fallback (deterministic)
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = t;
+      ta.setAttribute("readonly", "true");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return !!ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ------------------------------------------------------------
-  // Inject minimal styles (Executive + Integrity + Explainability + Context)
+  // Inject minimal styles (Executive + Integrity + Explainability + TopFixes)
   // ------------------------------------------------------------
   function injectStyles() {
     if (document.getElementById("validoon-injected-css")) return;
@@ -188,6 +219,65 @@
         transition: width .25s ease;
         background: linear-gradient(90deg, rgba(53,208,127,.9), rgba(255,184,77,.9), rgba(255,91,91,.9));
       }
+
+      /* Top-3 Fix Panel */
+      .v-fix{
+        margin: 0 0 12px;
+        padding: 12px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,.08);
+        background: rgba(0,0,0,.16);
+      }
+      .v-fix-head{
+        display:flex; align-items:center; justify-content:space-between;
+        font-weight:900; letter-spacing:.2px; font-size:13px;
+        margin-bottom:10px; opacity:.95;
+      }
+      .v-fix-sub{ font-size:12px; opacity:.8; }
+      .fix-item{
+        padding:10px 10px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.08);
+        background: rgba(255,255,255,.03);
+      }
+      .fix-item + .fix-item{ margin-top:10px; }
+      .fix-top{
+        display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+      }
+      .fix-line{
+        font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace);
+        font-size:12px; line-height:1.35;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        opacity:.95;
+      }
+      .fix-meta{
+        margin-top:8px;
+        font-size:12px; line-height:1.5;
+        opacity:.9;
+      }
+      .fix-meta b{ opacity:.98; }
+      .fix-actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+      .btn-mini{
+        display:inline-flex; align-items:center; justify-content:center;
+        padding:8px 10px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.04);
+        color: inherit;
+        font-size:12px; font-weight:850;
+        cursor:pointer;
+        user-select:none;
+      }
+      .btn-mini:hover{ background: rgba(255,255,255,.07); }
+      .btn-mini:active{ transform: translateY(1px); }
+      .btn-mini.good{ border-color: rgba(53,208,127,.35); }
+      .btn-mini.warn{ border-color: rgba(255,184,77,.35); }
+      .btn-mini.bad{ border-color: rgba(255,91,91,.35); }
+      .copy-state{
+        font-size:11px;
+        opacity:.75;
+        margin-left:8px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -232,7 +322,6 @@
   }
 
   function buildContextMap(lines, windowSize = 2) {
-    // Detect code fences ``` ... ``` deterministically
     const inFence = new Array(lines.length).fill(false);
     let fence = false;
     for (let i = 0; i < lines.length; i++) {
@@ -240,7 +329,7 @@
       const t = raw.trim();
       if (/^```/.test(t)) {
         fence = !fence;
-        inFence[i] = true; // fence line itself treated as reference context
+        inFence[i] = true;
         continue;
       }
       inFence[i] = fence;
@@ -249,7 +338,6 @@
     const ref = lines.map((l, i) => hasReferenceContext(l) || inFence[i]);
     const exec = lines.map((l) => isExecutionContext(l));
 
-    // Window aggregation: any reference/execution cues in +/- windowSize
     const windowRef = new Array(lines.length).fill(false);
     const windowExec = new Array(lines.length).fill(false);
     for (let i = 0; i < lines.length; i++) {
@@ -277,8 +365,6 @@
     const refLike = !!(ctx?.ref || ctx?.windowRef || ctx?.inFence);
     const execLike = !!(ctx?.exec || ctx?.windowExec);
 
-    // KEY POLICY:
-    // - Only downgrade due to reference context when NOT in execution context in the multi-line window
     if (refLike && !execLike) {
       if (baseDecision === "BLOCK") {
         return { decision: "WARN", downgraded: true, tag: "CONTEXT:MULTILINE_REF" };
@@ -289,7 +375,6 @@
       return { decision: baseDecision, downgraded: false, tag: "CONTEXT:MULTILINE_REF" };
     }
 
-    // If execution context is present, do NOT downgrade
     return { decision: baseDecision, downgraded: false, tag: null };
   }
 
@@ -324,84 +409,84 @@
   // ------------------------------------------------------------
   const EXPLAIN = {
     "SSRF:METADATA_IP": {
-      why: "Cloud metadata IP detected (common SSRF credential-harvesting primitive).",
-      risk: "High — may expose cloud instance credentials if used in requests.",
-      action: "If this is not strictly documentation, remove before sharing/executing."
+      why: "Cloud metadata IP detected (common SSRF primitive).",
+      risk: "High — may expose cloud instance credentials if requested.",
+      action: "Remove or replace with placeholder before sharing/executing."
     },
     "SSRF:METADATA_URL": {
       why: "Direct metadata service URL detected (latest/meta-data).",
       risk: "High — strong SSRF pattern used to read instance metadata.",
-      action: "Treat as high-risk; remove before production or external sharing."
+      action: "Remove; never forward as-is to tools/agents."
     },
     "SSRF:ENCODED_IP": {
-      why: "Encoded IP form detected (octal/hex) often used to bypass filters.",
+      why: "Encoded IP form detected (octal/hex) used for filter bypass.",
       risk: "Medium/High — obfuscation increases bypass probability.",
-      action: "Review context; block if used in request/URL context."
+      action: "Replace with placeholder; re-scan."
     },
     "INFRA:DOCKER_SOCKET": {
       why: "Docker socket path detected (/var/run/docker.sock).",
-      risk: "High — access can imply container control or host-level exposure.",
-      action: "Do not expose publicly; remove from shared logs/snippets."
+      risk: "High — access can imply container control/host exposure.",
+      action: "Remove from shared logs/snippets; never expose publicly."
     },
     "INFRA:DOCKER_API": {
       why: "Docker API endpoint detected (/containers/json, /images/json).",
       risk: "High — container enumeration/control vector.",
-      action: "Remove before sharing; never execute in untrusted contexts."
+      action: "Remove/placeholder; verify intent."
     },
     "CMD:CAT_PASSWD": {
-      why: "System password file read attempt detected (/etc/passwd).",
-      risk: "High — sensitive system information exposure.",
-      action: "Block; remove before sharing or execution."
+      why: "Sensitive file read attempt detected (/etc/passwd).",
+      risk: "High — system info exposure.",
+      action: "Block; do not execute; replace in shared text."
     },
     "CMD:CAT_SHADOW": {
       why: "Shadow file read attempt detected (/etc/shadow).",
       risk: "Critical — hashed password exposure attempt.",
-      action: "Block immediately; treat as high severity."
+      action: "Treat as incident; remove immediately."
     },
     "CMD:WHOAMI": {
       why: "Identity probe command detected (whoami).",
-      risk: "Medium — often used to confirm execution context.",
-      action: "If it's a real command (not documentation), review before use."
+      risk: "Medium — used to confirm execution context.",
+      action: "If real execution, warn; if docs, keep as text only."
     },
     "CMD:ID": {
       why: "Identity/permission probe detected (id).",
-      risk: "Medium — used to enumerate privileges.",
-      action: "Review context; avoid running in untrusted environments."
+      risk: "Medium — privilege enumeration.",
+      action: "Review context; avoid in untrusted scripts."
     },
     "CMD:UNAME": {
       why: "System fingerprinting detected (uname).",
       risk: "Low/Medium — environment recon.",
-      action: "Allow if purely diagnostic; warn if part of suspicious script."
+      action: "Warn if part of suspicious chain."
     },
     "CMD:LS": {
       why: "Directory listing command detected (ls).",
       risk: "Low/Medium — recon/triage command.",
-      action: "Allow in safe admin scripts; warn in untrusted prompts."
+      action: "Warn if part of suspicious prompt."
     },
     "AI:OVERRIDE": {
-      why: "Instruction override / prompt injection cue detected.",
-      risk: "Medium — can bypass assistant/tool constraints.",
-      action: "Do not forward to LLMs/tools as-is; sanitize or refuse."
+      why: "Prompt injection / instruction override cue detected.",
+      risk: "Medium — can bypass constraints downstream.",
+      action: "Sanitize or refuse; do not forward as-is."
     },
     "SECRET:API_KEY": {
-      why: "API key-like token detected (high likelihood credential).",
-      risk: "High — accidental credential leak.",
-      action: "Rotate/revoke if real; remove from logs and public content."
+      why: "API key-like token detected (credential leak risk).",
+      risk: "High — account compromise possible if real.",
+      action: "Mask immediately; rotate/revoke if real."
     },
     "SECRET:PRIVATE_KEY": {
       why: "Private key header detected.",
-      risk: "Critical — immediate secret compromise risk.",
-      action: "Treat as incident; revoke/rotate and remove everywhere."
+      risk: "Critical — immediate compromise risk.",
+      action: "Rotate/revoke and remove from all locations."
     },
     "WEB:HTML_MARKER": {
-      why: "HTML/script marker detected (may indicate XSS payload or unsafe snippet).",
-      risk: "Medium — can be dangerous if rendered/executed by a target system.",
-      action: "Ensure it is handled as text; do not execute or inject into DOM unsafely."
+      why: "HTML/script marker detected (possible XSS/unsafe snippet).",
+      risk: "Medium — dangerous if rendered/executed.",
+      action: "Ensure handled as text only; do not inject into DOM."
     },
     "CONTEXT:MULTILINE_REF": {
-      why: "Reference/documentation context detected across nearby lines (multi-line).",
-      risk: "Reduces false positives while keeping visibility of risky primitives.",
-      action: "If you plan to execute, remove reference wording and re-scan."
+      why: "Reference/documentation context detected across nearby lines.",
+      risk: "Reduces false positives while preserving visibility.",
+      action: "If planning execution, remove reference wording and re-scan."
     }
   };
 
@@ -437,7 +522,7 @@
   }
 
   // ------------------------------------------------------------
-  // Decision Policy (base, deterministic)
+  // Decision Policy (base)
   // ------------------------------------------------------------
   function decideFromHits(hits) {
     const maxSev = hits.reduce((m, h) => Math.max(m, h.sev), 0);
@@ -457,14 +542,12 @@
     const labels = hits.map(h => h.label);
     const base = decideFromHits(hits);
 
-    // Multi-line context shield applied AFTER base decision
     const shield = applyContextShieldMultiline(s, base.decision, base.sev, ctx);
     const finalDecision = shield.decision;
 
     const signals = shield.tag ? uniq([...labels, shield.tag]) : labels;
 
-    const confidence =
-      hits.length ? Math.min(99, Math.round(hits.reduce((m, h) => Math.max(m, h.conf), 0))) : 0;
+    const confidence = hits.length ? Math.min(99, Math.round(hits.reduce((m, h) => Math.max(m, h.conf), 0))) : 0;
 
     return {
       input: s,
@@ -692,6 +775,200 @@
   }
 
   // ------------------------------------------------------------
+  // Top-3 Fix Panel (core)
+  // ------------------------------------------------------------
+  function rankFixCandidates(rows) {
+    // Deterministic scoring: decision priority + severity + confidence + context penalty
+    const dScore = (d) => (d === "BLOCK" ? 300 : d === "WARN" ? 200 : 0);
+    return rows
+      .map((r, idx) => {
+        const penalty = r.contextDowngraded ? -25 : 0; // still may matter but less urgent
+        const score = dScore(r.decision) + (r.severity || 0) + Math.round((r.confidence || 0) * 0.2) + penalty;
+        return { r, idx, score };
+      })
+      .filter(x => x.r.decision !== "ALLOW") // Fix panel focuses on actionable issues
+      .sort((a,b) => b.score - a.score);
+  }
+
+  function choosePrimarySignal(r) {
+    const sigs = (r.signals || []).filter(s => s !== "CONTEXT:MULTILINE_REF");
+    if (!sigs.length) return r.signals?.[0] || null;
+    // Prefer secrets > ssrf > docker > cmd > ai override > web
+    const pref = [
+      "SECRET:PRIVATE_KEY",
+      "SECRET:API_KEY",
+      "SSRF:METADATA_URL",
+      "SSRF:METADATA_IP",
+      "SSRF:ENCODED_IP",
+      "INFRA:DOCKER_SOCKET",
+      "INFRA:DOCKER_API",
+      "CMD:CAT_SHADOW",
+      "CMD:CAT_PASSWD",
+      "AI:OVERRIDE",
+      "WEB:HTML_MARKER",
+      "CMD:WHOAMI",
+      "CMD:ID",
+      "CMD:UNAME",
+      "CMD:LS",
+    ];
+    for (const p of pref) if (sigs.includes(p)) return p;
+    return sigs[0];
+  }
+
+  function safeRewrite(line, primarySignal) {
+    const s = String(line ?? "");
+    const L = String(primarySignal ?? "");
+
+    // Always mask key material safely
+    if (/-----BEGIN\s+(RSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----/i.test(s)) {
+      return "[REDACTED:PRIVATE_KEY_BLOCK_REMOVED]";
+    }
+    if (/\b(ghp_|sk_live_|AIza)[A-Za-z0-9_]{16,}\b/.test(s)) {
+      return s.replace(/\b(ghp_|sk_live_|AIza)[A-Za-z0-9_]{16,}\b/g, "[REDACTED:API_KEY]");
+    }
+
+    if (L.startsWith("SSRF:")) {
+      // Replace metadata IP/URL and any direct 169.254.169.254 appearances
+      let out = s
+        .replace(/\b169\.254\.169\.254\b/g, "<METADATA_IP>")
+        .replace(/\bhttps?:\/\/<METADATA_IP>\/(latest\/)?meta-data\/?/gi, "https://<METADATA_HOST>/<META_PATH>");
+      // Generalize any URL that still points to metadata patterns
+      out = out.replace(/\bhttps?:\/\/[^ ]*meta-data[^ ]*/gi, "https://<METADATA_HOST>/<META_PATH>");
+      return out;
+    }
+
+    if (L === "INFRA:DOCKER_SOCKET") {
+      return s.replace(/\/var\/run\/docker\.sock/gi, "<DOCKER_SOCKET_PATH>");
+    }
+    if (L === "INFRA:DOCKER_API") {
+      return s
+        .replace(/GET\s+\/containers\/json/gi, "GET /<DOCKER_API_ENDPOINT>")
+        .replace(/GET\s+\/images\/json/gi, "GET /<DOCKER_API_ENDPOINT>")
+        .replace(/\/containers\/json/gi, "/<DOCKER_API_ENDPOINT>")
+        .replace(/\/images\/json/gi, "/<DOCKER_API_ENDPOINT>");
+    }
+
+    if (L === "CMD:CAT_SHADOW") {
+      return "[BLOCKED_COMMAND_REMOVED: cat /etc/shadow]";
+    }
+    if (L === "CMD:CAT_PASSWD") {
+      return "[BLOCKED_COMMAND_REMOVED: cat /etc/passwd]";
+    }
+
+    if (L === "AI:OVERRIDE") {
+      return "[REDACTED:INSTRUCTION_OVERRIDE_PHRASE]";
+    }
+
+    if (L === "WEB:HTML_MARKER") {
+      // Neutralize active script markers into text placeholders
+      return s
+        .replace(/<\s*script\b/gi, "<script(TEXT_ONLY)")
+        .replace(/\bonerror\s*=/gi, "onerror(TEXT_ONLY)=")
+        .replace(/\bjavascript:/gi, "javascript(TEXT_ONLY):");
+    }
+
+    // Default: keep text but neutralize obvious execution shapes (light touch)
+    return s.replace(/\b(run|execute|launch)\b/gi, "<$1>");
+  }
+
+  function fixRecommendation(primarySignal) {
+    const ex = EXPLAIN[primarySignal];
+    if (ex) return { why: ex.why, action: ex.action };
+    return {
+      why: "Suspicious pattern detected.",
+      action: "Remove or replace with placeholder before sharing/executing."
+    };
+  }
+
+  function upsertTopFixPanel(rows) {
+    const panel = findVerdictPanel();
+    if (!panel) return;
+
+    const ranked = rankFixCandidates(rows).slice(0, 3);
+
+    let host = document.getElementById("v_fix_host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "v_fix_host";
+      host.className = "v-fix";
+      // Put it right under executive summary box if present, otherwise top
+      const execHost = document.getElementById("v_exec_host");
+      if (execHost && execHost.parentElement) execHost.insertAdjacentElement("afterend", host);
+      else panel.prepend(host);
+    }
+
+    if (ranked.length === 0) {
+      host.innerHTML = `
+        <div class="v-fix-head">
+          <span>Top 3 Fixes</span>
+          <span class="v-fix-sub">No actionable issues</span>
+        </div>
+        <div class="fix-item">
+          <div class="fix-line">No BLOCK/WARN lines detected.</div>
+          <div class="fix-meta"><b>Next:</b> Paste technical text and run scan.</div>
+        </div>
+      `;
+      return;
+    }
+
+    host.innerHTML = `
+      <div class="v-fix-head">
+        <span>Top 3 Fixes</span>
+        <span class="v-fix-sub">Fast actions — copy safe version</span>
+      </div>
+      ${ranked.map((x, i) => {
+        const r = x.r;
+        const primary = choosePrimarySignal(r);
+        const rec = fixRecommendation(primary);
+        const safe = safeRewrite(r.input, primary);
+        const badgeClass = r.decision === "BLOCK" ? "bad" : "warn";
+        const shortSig = primary || "UNKNOWN";
+        const sev = clamp(r.severity || 0, 0, 100);
+        const conf = clamp(r.confidence || 0, 0, 99);
+        const extra = r.contextDowngraded ? " • context-downgraded" : "";
+        return `
+          <div class="fix-item" data-fix-idx="${i}">
+            <div class="fix-top">
+              <div style="min-width:0;flex:1;">
+                <div class="fix-line">${escapeHTML(r.input)}</div>
+                <div class="fix-meta">
+                  <div><b>Signal:</b> ${escapeHTML(shortSig)} • <b>Decision:</b> ${escapeHTML(r.decision)} • <b>Sev:</b> ${sev}% • <b>Conf:</b> ${conf}%${escapeHTML(extra)}</div>
+                  <div style="margin-top:6px;"><b>Why:</b> ${escapeHTML(rec.why)}</div>
+                  <div><b>Action:</b> ${escapeHTML(rec.action)}</div>
+                </div>
+                <div class="fix-actions">
+                  <button class="btn-mini ${badgeClass}" data-copy="safe" data-safe="${escapeHTML(safe)}">Copy safe version</button>
+                  <button class="btn-mini" data-copy="orig" data-orig="${escapeHTML(r.input)}">Copy original</button>
+                  <span class="copy-state" data-state> </span>
+                </div>
+              </div>
+              <div style="white-space:nowrap;">
+                <span class="pill ${r.decision.toLowerCase()}">${escapeHTML(r.decision)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    `;
+
+    // Attach handlers (deterministic, no deps)
+    const buttons = host.querySelectorAll("button[data-copy]");
+    buttons.forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const b = e.currentTarget;
+        const mode = b.getAttribute("data-copy");
+        const parent = b.closest(".fix-item");
+        const stateEl = parent ? parent.querySelector("[data-state]") : null;
+
+        const text = mode === "safe" ? b.getAttribute("data-safe") : b.getAttribute("data-orig");
+        const ok = await copyText(text || "");
+        if (stateEl) stateEl.textContent = ok ? "Copied." : "Copy failed.";
+        setTimeout(() => { if (stateEl) stateEl.textContent = ""; }, 1400);
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
   // Scan / Export / Load Tests / Clear
   // ------------------------------------------------------------
   function parseLines(text) {
@@ -705,9 +982,7 @@
     const inputEl = $("input");
     const lines = parseLines(inputEl?.value || "");
 
-    // Build multi-line context map once
     const ctxMap = buildContextMap(lines, 2);
-
     const rows = lines.map((line, i) => analyzeOneWithCtx(line, ctxMap[i])).filter(Boolean);
 
     const overall = computeOverall(rows);
@@ -718,6 +993,7 @@
     renderRows(rows);
 
     upsertExecAndIntegrity(rows);
+    upsertTopFixPanel(rows); // ✅ the new layer
   }
 
   function exportJSON() {
@@ -786,6 +1062,9 @@
 
     const host = document.getElementById("v_exec_host");
     if (host) host.remove();
+
+    const fix = document.getElementById("v_fix_host");
+    if (fix) fix.remove();
   }
 
   // ------------------------------------------------------------
