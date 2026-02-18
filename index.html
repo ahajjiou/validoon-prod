@@ -1,263 +1,171 @@
+<!-- index.html — DROP-IN REPLACEMENT (adds Onboarding + “Try sample” without breaking existing IDs) -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — Enterprise Local Security Engine</title>
-  <meta name="description" content="Deterministic local security scanner for AI prompts, logs, API requests, and infrastructure text. Runs in your browser." />
+  <title>Validoon — Local Security Engine</title>
+  <meta name="description" content="Validoon is a local, deterministic security decision engine for AI & cloud threat signals. Paste inputs, get a verdict, evidence, and export an audit-ready bundle." />
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-  <div class="app">
+  <!-- Onboarding Overlay (first visit) -->
+  <div id="onboarding" class="onb onb-hidden" aria-hidden="true">
+    <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
+      <div class="onb-head">
+        <div class="onb-brand">
+          <div class="brand-badge" aria-hidden="true">V</div>
+          <div>
+            <div id="onbTitle" class="onb-title">What is Validoon?</div>
+            <div class="onb-sub">Deterministic • Local-only • Audit-ready outputs</div>
+          </div>
+        </div>
+        <button id="onbClose" class="btn btn-ghost btn-pill" type="button">Close</button>
+      </div>
 
-    <!-- TOPBAR -->
-    <header class="topbar">
+      <div class="onb-grid">
+        <div class="onb-block">
+          <div class="onb-kicker">In 20 seconds</div>
+          <ul class="onb-list">
+            <li><b>Paste</b> suspicious inputs (prompts, URLs, logs, payloads).</li>
+            <li>Get a <b>verdict</b>: READY / WARN / DANGER.</li>
+            <li>Click any row to see <b>why flagged</b>, mapped controls, and remediation.</li>
+            <li>Export an <b>audit bundle</b> (JSON/ZIP/PDF depending on your JS build).</li>
+          </ul>
+
+          <div class="onb-badges">
+            <span class="onb-pill">No upload</span>
+            <span class="onb-pill">Runs in-browser</span>
+            <span class="onb-pill">Policy-governed</span>
+          </div>
+        </div>
+
+        <div class="onb-block">
+          <div class="onb-kicker">How to read results</div>
+          <div class="onb-steps">
+            <div class="onb-step">
+              <div class="onb-step-n">1</div>
+              <div>
+                <div class="onb-step-t">Decision</div>
+                <div class="onb-step-d">BLOCK / WARN / ALLOW based on thresholds.</div>
+              </div>
+            </div>
+            <div class="onb-step">
+              <div class="onb-step-n">2</div>
+              <div>
+                <div class="onb-step-t">Severity</div>
+                <div class="onb-step-d">Impact-based risk score (0–100).</div>
+              </div>
+            </div>
+            <div class="onb-step">
+              <div class="onb-step-n">3</div>
+              <div>
+                <div class="onb-step-t">Confidence</div>
+                <div class="onb-step-d">How sure the engine is (context-aware).</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="onb-note">
+            Tip: use <b>Load Test A/B</b> to see a “good example” instantly.
+          </div>
+        </div>
+      </div>
+
+      <div class="onb-actions">
+        <div class="onb-left">
+          <label class="onb-check">
+            <input id="onbDontShow" type="checkbox" />
+            <span>Don’t show again on this browser</span>
+          </label>
+        </div>
+
+        <div class="onb-right">
+          <button id="onbTryA" class="btn btn-primary btn-pill" type="button">Try Sample (Cloud)</button>
+          <button id="onbTryB" class="btn btn-ghost btn-pill" type="button">Try Sample (AI)</button>
+          <button id="onbStartEmpty" class="btn btn-ghost btn-pill" type="button">Start Empty</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
       <div class="brand">
-        <div class="brand-badge" aria-hidden="true">V</div>
+        <div class="brand-badge">V</div>
         <div class="brand-text">
           <div class="brand-name">Validoon</div>
-          <div class="brand-sub">Local deterministic scan for technical text (AI, Cloud, Infra) — browser-only</div>
+          <div class="brand-sub">Local Decision Engine — AI & Cloud Threat Intel 2026</div>
         </div>
       </div>
-
-      <div class="status" title="UI health indicator (local)">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span class="status-text" id="uiStatusText">Engine Active</span>
-      </div>
-
       <div class="topbar-actions">
-        <button class="btn btn-ghost btn-pill" id="btnLoadA" title="Load a cloud threat example">Load Test A (Cloud)</button>
-        <button class="btn btn-ghost btn-pill" id="btnLoadB" title="Load an AI threat example">Load Test B (AI)</button>
-        <button class="btn btn-primary btn-pill" id="btnScan" title="Scan the input stream">Execute Scan</button>
-        <button class="btn btn-ghost btn-pill" id="btnExport" title="Export results as JSON">Export JSON</button>
-        <button class="btn btn-danger btn-pill" id="btnClear" title="Clear everything">Clear</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadA" type="button">Load Test A (Cloud)</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadB" type="button">Load Test B (AI)</button>
+        <button class="btn btn-primary btn-pill" id="btnScan" type="button">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" id="btnExport" type="button">Export JSON</button>
+        <button class="btn btn-danger btn-pill" id="btnClear" type="button">Clear</button>
       </div>
-    </header>
+    </div>
 
-    <!-- HERO -->
-    <section class="hero card">
-      <div class="hero-grid">
-        <div class="hero-left">
-          <div class="kicker">Pre-send security check</div>
-          <h1 class="hero-title">Scan any technical text before you paste it into AI, APIs, or production.</h1>
-          <p class="hero-sub">
-            Validoon labels each line as
-            <span class="pill pill-bad">BLOCK</span>,
-            <span class="pill pill-warn">WARN</span>, or
-            <span class="pill pill-ok">ALLOW</span>
-            using deterministic rules — locally in your browser.
-          </p>
-
-          <div class="trust-row">
-            <div class="trust-chip">Local-only</div>
-            <div class="trust-chip">Deterministic rules</div>
-            <div class="trust-chip">No server upload</div>
-            <div class="trust-chip">Works offline</div>
-            <div class="trust-chip">Versioned</div>
+    <!-- Inline “Explain in place” (no new page, no idea change) -->
+    <details class="miniHelp" id="miniHelp">
+      <summary>
+        <span class="miniHelp-title">New here?</span>
+        <span class="miniHelp-sub">What Validoon does • How to read results • Why it’s different</span>
+      </summary>
+      <div class="miniHelp-body">
+        <div class="miniHelp-cols">
+          <div class="miniHelp-col">
+            <div class="miniHelp-h">What it does</div>
+            <ul class="miniHelp-list">
+              <li>Detects deterministic security signals in AI + cloud inputs.</li>
+              <li>Produces a decision + evidence per line (click a row).</li>
+              <li>Generates exportable artifacts for audit/review.</li>
+            </ul>
           </div>
-
-          <div class="hero-cta">
-            <button class="btn btn-primary btn-pill" id="ctaExample" type="button">Start with a real example</button>
-            <button class="btn btn-ghost btn-pill" id="ctaFocus" type="button">Paste my text</button>
+          <div class="miniHelp-col">
+            <div class="miniHelp-h">Why it’s different</div>
+            <ul class="miniHelp-list">
+              <li><b>Local-only</b>: nothing is uploaded.</li>
+              <li><b>Deterministic</b>: same input ⇒ same output.</li>
+              <li><b>Policy</b>: thresholds/multipliers (if your JS build supports it).</li>
+            </ul>
           </div>
-        </div>
-
-        <div class="hero-right">
-          <div class="mini card-inner">
-            <div class="mini-title">How to use (20 seconds)</div>
-            <ol class="steps">
-              <li><span class="step-n">1</span> Paste text into <b>Input Stream</b>.</li>
-              <li><span class="step-n">2</span> Click <b>Execute Scan</b>.</li>
-              <li><span class="step-n">3</span> Read decisions and act.</li>
-            </ol>
-
-            <div class="legend">
-              <div class="legend-title">How to read results</div>
-              <div class="legend-row">
-                <span class="pill pill-bad">BLOCK</span>
-                <div class="legend-text">High-risk signal. Do not use as-is.</div>
-              </div>
-              <div class="legend-row">
-                <span class="pill pill-warn">WARN</span>
-                <div class="legend-text">Suspicious. Review before use.</div>
-              </div>
-              <div class="legend-row">
-                <span class="pill pill-ok">ALLOW</span>
-                <div class="legend-text">No known high-risk signals detected.</div>
-              </div>
+          <div class="miniHelp-col">
+            <div class="miniHelp-h">Fast start</div>
+            <div class="miniHelp-cta">
+              <button class="btn btn-primary btn-pill" type="button" id="miniTryA">Try Sample A</button>
+              <button class="btn btn-ghost btn-pill" type="button" id="miniTryB">Try Sample B</button>
             </div>
-
-            <div class="mini-foot">
-              Tip: Use <b>Load Test A/B</b> first to learn what “danger” looks like.
-            </div>
+            <div class="miniHelp-tip">Then click any row to open explainability.</div>
           </div>
         </div>
       </div>
-    </section>
+    </details>
 
-    <!-- USE CASES -->
-    <section class="usecases">
-      <div class="uc card">
-        <div class="uc-title">AI prompts</div>
-        <div class="uc-sub">Detect prompt injection / override patterns before shipping prompts.</div>
-      </div>
-      <div class="uc card">
-        <div class="uc-title">Cloud & infra text</div>
-        <div class="uc-sub">Catch metadata SSRF & container abuse signals in logs and requests.</div>
-      </div>
-      <div class="uc card">
-        <div class="uc-title">Shared snippets</div>
-        <div class="uc-sub">Reduce accidental risk when sharing technical content publicly.</div>
-      </div>
-    </section>
-
-    <!-- TRUST / TRANSPARENCY -->
-    <section class="trust-section card">
-      <div class="trust-header">
-        <h2>Engine Transparency & Proof</h2>
-        <p>Clear methodology, visible scope, and versioning — designed for auditability.</p>
-      </div>
-
-      <div class="trust-grid">
-        <div class="trust-card">
-          <div class="trust-card-title">Proof</div>
-          <div class="proof-item"><span>Engine Version</span><span id="engineVersion">Live Build</span></div>
-          <div class="proof-item"><span>Decision Model</span><span>Deterministic Rules</span></div>
-          <div class="proof-item"><span>Data Handling</span><span>Local Only</span></div>
-          <div class="proof-item"><span>Internal Benchmark</span><span class="proof-pass">PASS</span></div>
-        </div>
-
-        <div class="trust-card">
-          <div class="trust-card-title">Coverage</div>
-          <ul class="coverage-list">
-            <li>AI Injection / Override</li>
-            <li>Cloud Metadata SSRF</li>
-            <li>Container Abuse (Docker endpoints)</li>
-            <li>Sensitive File Access Patterns</li>
-            <li>Suspicious Execution Signals</li>
-          </ul>
-        </div>
-
-        <div class="trust-card">
-          <div class="trust-card-title">Limitations</div>
-          <ul class="coverage-list muted">
-            <li>Heuristic detection (not a full SIEM)</li>
-            <li><b>ALLOW</b> ≠ guaranteed safe</li>
-            <li>Edge-case context ambiguity possible</li>
-            <li>Best used as a pre-check layer</li>
-          </ul>
-        </div>
-      </div>
-
-      <details class="methodology">
-        <summary>View Methodology & Change Log</summary>
-        <div class="methodology-content">
-          <h3>Methodology</h3>
-          <p>
-            Context Classification → Signal Extraction → Priority Decision Engine.
-            Each line is evaluated independently.
-          </p>
-
-          <h3>Decision Definitions</h3>
-          <ul>
-            <li><b>BLOCK</b> → high-risk primitive or critical pattern.</li>
-            <li><b>WARN</b> → suspicious signal requiring review.</li>
-            <li><b>ALLOW</b> → no known high-risk signals detected.</li>
-          </ul>
-
-          <h3>Recent Updates</h3>
-          <ul>
-            <li>v2.0.0 — deterministic hybrid priority decision engine</li>
-            <li>v2.0.1 — benchmark stabilization (MUST_BLOCK/MUST_WARN/CONTEXT)</li>
-            <li>v2.0.2 — enterprise onboarding + trust panel + telemetry UI</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <!-- MAIN GRID -->
-    <section class="grid">
-      <!-- INPUT -->
+    <div class="grid">
       <div class="card card-lg">
-        <div class="card-h">
-          <div class="h-title">Input Stream</div>
-          <div class="h-sub">Paste prompts, logs, API requests, configs, or snippets. One line = one decision.</div>
-        </div>
-
-        <textarea id="input" class="textarea" placeholder="Paste technical text here...
-
-Examples:
-- System prompt / user prompt
-- Log line / alert payload
-- API request snippet
-- Suspicious endpoint or URL
-"></textarea>
-
-        <div class="hint">
-          Recommended flow: <b>Load Test A/B</b> → observe results → paste your text → <b>Execute Scan</b>.
-        </div>
-
+        <div class="h-title">Input Stream</div>
+        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
         <div class="footer-note" id="buildStamp"></div>
       </div>
 
-      <!-- VERDICT / SIGNALS -->
       <div class="card card-lg">
         <div id="verdictBox" class="verdict verdict-secure">
           <div class="verdict-title" id="verdictText">READY</div>
-          <div class="verdict-sub">Overall status based on the strongest detected decision.</div>
-
           <div class="stats">
             <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
             <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
             <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
             <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
           </div>
-
-          <!-- LIVE TELEMETRY (UI only) -->
-          <div class="telemetry">
-            <div class="telemetry-row">
-              <div class="telemetry-label">Overall Risk Level</div>
-              <div class="telemetry-value" id="riskScoreText">0%</div>
-            </div>
-            <div class="risk-bar" aria-hidden="true">
-              <div id="riskFill" class="risk-fill"></div>
-            </div>
-
-            <div class="telemetry-row telem-slim">
-              <div class="telemetry-label">Distribution</div>
-              <div class="telemetry-hint" id="distText">BLOCK 0 • WARN 0 • ALLOW 0</div>
-            </div>
-            <div class="threat-chart" aria-hidden="true">
-              <div class="chart-bar block" id="chartBlock" style="width:0%"></div>
-              <div class="chart-bar warn" id="chartWarn" style="width:0%"></div>
-              <div class="chart-bar allow" id="chartAllow" style="width:0%"></div>
-            </div>
-          </div>
         </div>
-
         <div class="signals">
           <div class="signals-title">Active Signals</div>
-          <div class="signals-sub">Unique detections across the current scan.</div>
           <div id="signals" class="chips"></div>
         </div>
-
-        <details class="faq card-inner">
-          <summary>Common questions</summary>
-          <div class="faq-body">
-            <div class="faq-q">What should I paste?</div>
-            <div class="faq-a">Prompts, logs, API requests, URLs, snippets, error messages—anything technical you plan to reuse.</div>
-
-            <div class="faq-q">Does Validoon upload my data?</div>
-            <div class="faq-a">No. This build is designed to run locally in the browser.</div>
-
-            <div class="faq-q">Is ALLOW safe?</div>
-            <div class="faq-a">ALLOW means “no known high-risk signals detected.” It is not a guarantee.</div>
-          </div>
-        </details>
       </div>
 
-      <!-- RESULTS TABLE -->
       <div class="card card-xl">
         <div class="table">
           <div class="thead">
@@ -269,98 +177,71 @@ Examples:
           <div id="rows"></div>
         </div>
       </div>
-    </section>
-
-    <footer class="footer">
-      <div class="footer-left">Validoon — Enterprise Local Threat Pre-Check Layer</div>
-      <div class="footer-right">Local-only • Deterministic • Versioned</div>
-    </footer>
+    </div>
   </div>
 
-  <!-- UX-only script: live telemetry from counters (NO engine changes) -->
+  <script src="app_prod.js" defer></script>
+
+  <!-- Onboarding controller (does NOT touch your engine, only clicks existing buttons) -->
   <script>
     (function () {
-      const $ = (id) => document.getElementById(id);
+      "use strict";
+      var KEY = "validoon_onboarding_dismissed_v1";
 
-      const build = $("buildStamp");
-      const engineVersion = $("engineVersion");
-      const uiStatusText = $("uiStatusText");
-
-      function syncVersion() {
-        if (!engineVersion) return;
-        const t = (build && build.textContent || "").trim();
-        engineVersion.textContent = t ? t.replace(/^Version:\s*/i, "") : "Live Build";
+      function $(id){ return document.getElementById(id); }
+      function show(on){
+        var el = $("onboarding");
+        if(!el) return;
+        el.classList.toggle("onb-hidden", !on);
+        el.setAttribute("aria-hidden", on ? "false" : "true");
       }
-
-      function num(id) {
-        const el = $(id);
-        const v = parseInt((el && el.textContent || "0").trim(), 10);
-        return Number.isFinite(v) ? v : 0;
+      function click(id){
+        var b = $(id);
+        if(b) b.click();
       }
-
-      function setWidth(el, pct) {
-        if (!el) return;
-        el.style.width = Math.max(0, Math.min(100, pct)).toFixed(2) + "%";
-      }
-
-      function updateTelemetry() {
-        const b = num("kBlock");
-        const w = num("kWarn");
-        const a = num("kAllow");
-        const total = Math.max(1, b + w + a);
-
-        // Risk score: BLOCK 100, WARN 60, ALLOW 0 (normalized by total)
-        const score = Math.min(100, Math.round(((b * 100) + (w * 60)) / total));
-        const riskFill = $("riskFill");
-        const riskScoreText = $("riskScoreText");
-        const distText = $("distText");
-
-        if (riskScoreText) riskScoreText.textContent = score + "%";
-        if (distText) distText.textContent = "BLOCK " + b + " • WARN " + w + " • ALLOW " + a;
-
-        setWidth(riskFill, score);
-
-        // Color mapping
-        if (riskFill) {
-          if (score >= 70) riskFill.style.background = "var(--bad)";
-          else if (score >= 30) riskFill.style.background = "var(--warn)";
-          else riskFill.style.background = "var(--ok)";
+      function dismiss(){
+        var cb = $("onbDontShow");
+        if(cb && cb.checked){
+          try{ localStorage.setItem(KEY, "1"); }catch(e){}
         }
-
-        // Distribution bars
-        setWidth($("chartBlock"), (b / total) * 100);
-        setWidth($("chartWarn"), (w / total) * 100);
-        setWidth($("chartAllow"), (a / total) * 100);
-
-        // UI status
-        if (uiStatusText) {
-          if (b > 0) uiStatusText.textContent = "Engine Active • High Risk Detected";
-          else if (w > 0) uiStatusText.textContent = "Engine Active • Review Recommended";
-          else uiStatusText.textContent = "Engine Active • No High Risk Detected";
-        }
+        show(false);
       }
 
-      // CTA wiring (safe)
-      const ctaExample = $("ctaExample");
-      const ctaFocus = $("ctaFocus");
-      const btnLoadB = $("btnLoadB");
-      const input = $("input");
-      if (ctaExample && btnLoadB) ctaExample.addEventListener("click", () => btnLoadB.click());
-      if (ctaFocus && input) ctaFocus.addEventListener("click", () => input.focus());
+      function shouldShow(){
+        try{ return localStorage.getItem(KEY) !== "1"; }catch(e){ return true; }
+      }
 
-      // Observe counter changes
-      const obsTargets = ["kBlock","kWarn","kAllow","kScans"].map($).filter(Boolean);
-      const mo = new MutationObserver(() => updateTelemetry());
-      obsTargets.forEach(el => mo.observe(el, { childList: true, characterData: true, subtree: true }));
+      // First paint
+      if(shouldShow()){
+        // small delay to avoid flashing during initial layout
+        window.setTimeout(function(){ show(true); }, 180);
+      }
 
-      // Initial
-      setTimeout(syncVersion, 200);
-      setTimeout(syncVersion, 900);
-      setTimeout(updateTelemetry, 250);
-      setTimeout(updateTelemetry, 900);
+      $("onbClose") && $("onbClose").addEventListener("click", dismiss);
+      $("onbStartEmpty") && $("onbStartEmpty").addEventListener("click", dismiss);
+
+      $("onbTryA") && $("onbTryA").addEventListener("click", function(){
+        dismiss(); click("btnLoadA"); window.setTimeout(function(){ click("btnScan"); }, 80);
+      });
+      $("onbTryB") && $("onbTryB").addEventListener("click", function(){
+        dismiss(); click("btnLoadB"); window.setTimeout(function(){ click("btnScan"); }, 80);
+      });
+
+      $("miniTryA") && $("miniTryA").addEventListener("click", function(){
+        click("btnLoadA"); window.setTimeout(function(){ click("btnScan"); }, 80);
+      });
+      $("miniTryB") && $("miniTryB").addEventListener("click", function(){
+        click("btnLoadB"); window.setTimeout(function(){ click("btnScan"); }, 80);
+      });
+
+      // ESC to close
+      document.addEventListener("keydown", function(e){
+        if(e.key === "Escape"){
+          var ob = $("onboarding");
+          if(ob && !ob.classList.contains("onb-hidden")) dismiss();
+        }
+      });
     })();
   </script>
-
-  <script src="app_prod.js" defer></script>
 </body>
 </html>
