@@ -1,247 +1,200 @@
-<!-- index.html — DROP-IN REPLACEMENT (adds Onboarding + “Try sample” without breaking existing IDs) -->
+<!-- index.html — Validoon -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — Local Security Engine</title>
-  <meta name="description" content="Validoon is a local, deterministic security decision engine for AI & cloud threat signals. Paste inputs, get a verdict, evidence, and export an audit-ready bundle." />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Validoon — Local deterministic security scan for technical text (AI, cloud, infra). Browser-only." />
+
+  <!-- Local-only CSP (no network). -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';" />
+
+  <title>Validoon — Deterministic Security Engine</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <!-- Onboarding Overlay (first visit) -->
-  <div id="onboarding" class="onb onb-hidden" aria-hidden="true">
-    <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
-      <div class="onb-head">
-        <div class="onb-brand">
-          <div class="brand-badge" aria-hidden="true">V</div>
-          <div>
-            <div id="onbTitle" class="onb-title">What is Validoon?</div>
-            <div class="onb-sub">Deterministic • Local-only • Audit-ready outputs</div>
-          </div>
-        </div>
-        <button id="onbClose" class="btn btn-ghost btn-pill" type="button">Close</button>
-      </div>
-
-      <div class="onb-grid">
-        <div class="onb-block">
-          <div class="onb-kicker">In 20 seconds</div>
-          <ul class="onb-list">
-            <li><b>Paste</b> suspicious inputs (prompts, URLs, logs, payloads).</li>
-            <li>Get a <b>verdict</b>: READY / WARN / DANGER.</li>
-            <li>Click any row to see <b>why flagged</b>, mapped controls, and remediation.</li>
-            <li>Export an <b>audit bundle</b> (JSON/ZIP/PDF depending on your JS build).</li>
-          </ul>
-
-          <div class="onb-badges">
-            <span class="onb-pill">No upload</span>
-            <span class="onb-pill">Runs in-browser</span>
-            <span class="onb-pill">Policy-governed</span>
-          </div>
-        </div>
-
-        <div class="onb-block">
-          <div class="onb-kicker">How to read results</div>
-          <div class="onb-steps">
-            <div class="onb-step">
-              <div class="onb-step-n">1</div>
-              <div>
-                <div class="onb-step-t">Decision</div>
-                <div class="onb-step-d">BLOCK / WARN / ALLOW based on thresholds.</div>
-              </div>
-            </div>
-            <div class="onb-step">
-              <div class="onb-step-n">2</div>
-              <div>
-                <div class="onb-step-t">Severity</div>
-                <div class="onb-step-d">Impact-based risk score (0–100).</div>
-              </div>
-            </div>
-            <div class="onb-step">
-              <div class="onb-step-n">3</div>
-              <div>
-                <div class="onb-step-t">Confidence</div>
-                <div class="onb-step-d">How sure the engine is (context-aware).</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="onb-note">
-            Tip: use <b>Load Test A/B</b> to see a “good example” instantly.
-          </div>
-        </div>
-      </div>
-
-      <div class="onb-actions">
-        <div class="onb-left">
-          <label class="onb-check">
-            <input id="onbDontShow" type="checkbox" />
-            <span>Don’t show again on this browser</span>
-          </label>
-        </div>
-
-        <div class="onb-right">
-          <button id="onbTryA" class="btn btn-primary btn-pill" type="button">Try Sample (Cloud)</button>
-          <button id="onbTryB" class="btn btn-ghost btn-pill" type="button">Try Sample (AI)</button>
-          <button id="onbStartEmpty" class="btn btn-ghost btn-pill" type="button">Start Empty</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="app">
-    <div class="topbar">
+
+    <!-- Top bar -->
+    <header class="topbar">
       <div class="brand">
-        <div class="brand-badge">V</div>
-        <div class="brand-text">
-          <div class="brand-name">Validoon</div>
-          <div class="brand-sub">Local Decision Engine — AI & Cloud Threat Intel 2026</div>
+        <div class="logo" aria-hidden="true">V</div>
+        <div class="brandText">
+          <div class="brandName">Validoon</div>
+          <div class="brandTag">Local-only deterministic pre-send security check (AI • Cloud • Infra)</div>
         </div>
       </div>
-      <div class="topbar-actions">
-        <button class="btn btn-ghost btn-pill" id="btnLoadA" type="button">Load Test A (Cloud)</button>
-        <button class="btn btn-ghost btn-pill" id="btnLoadB" type="button">Load Test B (AI)</button>
-        <button class="btn btn-primary btn-pill" id="btnScan" type="button">Execute Scan</button>
-        <button class="btn btn-ghost btn-pill" id="btnExport" type="button">Export JSON</button>
-        <button class="btn btn-danger btn-pill" id="btnClear" type="button">Clear</button>
-      </div>
-    </div>
 
-    <!-- Inline “Explain in place” (no new page, no idea change) -->
-    <details class="miniHelp" id="miniHelp">
-      <summary>
-        <span class="miniHelp-title">New here?</span>
-        <span class="miniHelp-sub">What Validoon does • How to read results • Why it’s different</span>
-      </summary>
-      <div class="miniHelp-body">
-        <div class="miniHelp-cols">
-          <div class="miniHelp-col">
-            <div class="miniHelp-h">What it does</div>
-            <ul class="miniHelp-list">
-              <li>Detects deterministic security signals in AI + cloud inputs.</li>
-              <li>Produces a decision + evidence per line (click a row).</li>
-              <li>Generates exportable artifacts for audit/review.</li>
-            </ul>
-          </div>
-          <div class="miniHelp-col">
-            <div class="miniHelp-h">Why it’s different</div>
-            <ul class="miniHelp-list">
-              <li><b>Local-only</b>: nothing is uploaded.</li>
-              <li><b>Deterministic</b>: same input ⇒ same output.</li>
-              <li><b>Policy</b>: thresholds/multipliers (if your JS build supports it).</li>
-            </ul>
-          </div>
-          <div class="miniHelp-col">
-            <div class="miniHelp-h">Fast start</div>
-            <div class="miniHelp-cta">
-              <button class="btn btn-primary btn-pill" type="button" id="miniTryA">Try Sample A</button>
-              <button class="btn btn-ghost btn-pill" type="button" id="miniTryB">Try Sample B</button>
+      <div class="topActions">
+        <button id="btnLoadA" class="btn btn-ghost" type="button">Load Test A</button>
+        <button id="btnLoadB" class="btn btn-ghost" type="button">Load Test B</button>
+        <button id="btnScan" class="btn btn-primary" type="button">Execute Scan</button>
+        <button id="btnExport" class="btn btn-ghost" type="button">Export JSON</button>
+        <button id="btnClear" class="btn btn-danger" type="button">Clear</button>
+      </div>
+
+      <div class="statusPill" title="Local-only • deterministic">
+        <span class="dot dot-ok" aria-hidden="true"></span>
+        <span class="statusText">Engine Active</span>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero card">
+      <div class="heroLeft">
+        <div class="kicker">Pre-send security check</div>
+        <h1>Scan technical text before you paste it into AI, APIs, or production.</h1>
+        <p class="sub">
+          Decisions per line: <span class="pill pill-block">BLOCK</span>,
+          <span class="pill pill-warn">WARN</span>, <span class="pill pill-allow">ALLOW</span>.
+          Runs locally in your browser. No uploads.
+        </p>
+
+        <div class="chipRow">
+          <span class="chip">Local-only</span>
+          <span class="chip">Deterministic rules</span>
+          <span class="chip">No network calls</span>
+          <span class="chip">Explainability</span>
+          <span class="chip">Export JSON</span>
+        </div>
+
+        <div class="heroCTA">
+          <button class="btn btn-primary" type="button" onclick="document.getElementById('btnLoadA')?.click()">Start with Example</button>
+          <button class="btn btn-ghost" type="button" onclick="document.getElementById('input')?.focus()">Paste my text</button>
+        </div>
+      </div>
+
+      <div class="heroRight">
+        <!-- Executive Risk Summary + Integrity -->
+        <div class="execWrap card subtle">
+          <div class="execHeader">
+            <div class="execTitle">
+              <span class="badge" id="integrityBadge">Integrity: LOCAL-BUILD</span>
+              <span class="badge badge-muted" id="metaMode">Local-only (no upload)</span>
             </div>
-            <div class="miniHelp-tip">Then click any row to open explainability.</div>
+            <div class="execMeta">
+              <span class="metaLabel">Build</span>
+              <span class="metaValue" id="metaBuild">—</span>
+            </div>
+          </div>
+
+          <div class="riskBar">
+            <div class="riskBarFill" id="overallRiskBar" style="width:0%"></div>
+          </div>
+
+          <div class="execGrid">
+            <div class="execStat">
+              <div class="execStatLabel">Overall risk</div>
+              <div class="execStatValue" id="overallRiskPct">0%</div>
+            </div>
+            <div class="execStat">
+              <div class="execStatLabel">Distribution</div>
+              <div class="execStatValue small" id="distributionText">BLOCK 0 • WARN 0 • ALLOW 0</div>
+            </div>
+            <div class="execStat">
+              <div class="execStatLabel">Determinism</div>
+              <div class="execStatValue small" id="metaIntegrity">Deterministic build</div>
+            </div>
+          </div>
+
+          <div id="execSummary" class="execSummary"></div>
+        </div>
+
+        <div class="howTo card subtle">
+          <div class="howTitle">How to use</div>
+          <ol class="steps">
+            <li>Paste text in <b>Input Stream</b>.</li>
+            <li>Click <b>Execute Scan</b>.</li>
+            <li>Review <b>Explainability</b> and decisions.</li>
+          </ol>
+
+          <div class="legend">
+            <div class="legendRow"><span class="pill pill-block">BLOCK</span><span>High-risk. Do not use as-is.</span></div>
+            <div class="legendRow"><span class="pill pill-warn">WARN</span><span>Suspicious. Review context.</span></div>
+            <div class="legendRow"><span class="pill pill-allow">ALLOW</span><span>No high-risk signals detected.</span></div>
           </div>
         </div>
       </div>
-    </details>
+    </section>
 
-    <div class="grid">
-      <div class="card card-lg">
-        <div class="h-title">Input Stream</div>
-        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
-        <div class="footer-note" id="buildStamp"></div>
+    <!-- Workspace -->
+    <section class="workspace">
+      <div class="workLeft card">
+        <div class="workHeader">
+          <div class="workTitle">Input Stream</div>
+          <div class="workHint">Prompts • logs • URLs • snippets • configs. One line = one decision.</div>
+        </div>
+
+        <textarea id="input" class="input" spellcheck="false" placeholder="Paste technical text here..."></textarea>
+
+        <div class="workFooter">
+          <div class="smallNote">Tip: Hover rows in the table for explainability.</div>
+          <div class="buildStamp" id="buildStamp">Version: —</div>
+        </div>
       </div>
 
-      <div class="card card-lg">
-        <div id="verdictBox" class="verdict verdict-secure">
-          <div class="verdict-title" id="verdictText">READY</div>
-          <div class="stats">
-            <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
-            <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
-            <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
-            <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
+      <aside class="workRight">
+        <div class="verdict card" id="verdictBox" data-verdict="READY">
+          <div class="verdictTop">
+            <div class="verdictTitle" id="verdictText">READY</div>
+            <div class="verdictSub">Overall status uses the strongest detected decision.</div>
           </div>
+
+          <div class="counters">
+            <div class="counter"><div class="counterLabel">Scans</div><div class="counterValue" id="kScans">0</div></div>
+            <div class="counter"><div class="counterLabel">Block</div><div class="counterValue bad" id="kBlock">0</div></div>
+            <div class="counter"><div class="counterLabel">Warn</div><div class="counterValue warn" id="kWarn">0</div></div>
+            <div class="counter"><div class="counterLabel">Allow</div><div class="counterValue ok" id="kAllow">0</div></div>
+          </div>
+
+          <div class="sectionTitle">Active Signals</div>
+          <div class="signals" id="signals"></div>
+
+          <div class="sectionTitle mt">Explainability Layer</div>
+          <div class="explainPanel" id="explainPanel">
+            <div class="explainList" id="explainList"></div>
+          </div>
+
+          <div class="sectionTitle mt">Common questions</div>
+          <div class="faq" id="commonQuestions"></div>
         </div>
-        <div class="signals">
-          <div class="signals-title">Active Signals</div>
-          <div id="signals" class="chips"></div>
+      </aside>
+    </section>
+
+    <!-- Results -->
+    <section class="results card">
+      <div class="resultsHeader">
+        <div>
+          <div class="cardTitle">Line Decisions</div>
+          <div class="cardSub">Compact view. Hover a row for top signals & reasoning.</div>
         </div>
       </div>
 
-      <div class="card card-xl">
-        <div class="table">
-          <div class="thead">
-            <div>Input Content</div>
-            <div>Decision</div>
-            <div>Sev</div>
-            <div>Entropy</div>
-          </div>
-          <div id="rows"></div>
-        </div>
+      <div class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Input Content</th>
+              <th class="colDecision">Decision</th>
+              <th class="colSev">Sev</th>
+              <th class="colEnt">Entropy</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
       </div>
-    </div>
+
+      <div class="footerBar">
+        <div class="footerLeft">Validoon — Local Threat Pre-Check Layer</div>
+        <div class="footerRight">Local-only • Deterministic • Versioned</div>
+      </div>
+    </section>
+
   </div>
 
   <script src="app_prod.js" defer></script>
-
-  <!-- Onboarding controller (does NOT touch your engine, only clicks existing buttons) -->
-  <script>
-    (function () {
-      "use strict";
-      var KEY = "validoon_onboarding_dismissed_v1";
-
-      function $(id){ return document.getElementById(id); }
-      function show(on){
-        var el = $("onboarding");
-        if(!el) return;
-        el.classList.toggle("onb-hidden", !on);
-        el.setAttribute("aria-hidden", on ? "false" : "true");
-      }
-      function click(id){
-        var b = $(id);
-        if(b) b.click();
-      }
-      function dismiss(){
-        var cb = $("onbDontShow");
-        if(cb && cb.checked){
-          try{ localStorage.setItem(KEY, "1"); }catch(e){}
-        }
-        show(false);
-      }
-
-      function shouldShow(){
-        try{ return localStorage.getItem(KEY) !== "1"; }catch(e){ return true; }
-      }
-
-      // First paint
-      if(shouldShow()){
-        // small delay to avoid flashing during initial layout
-        window.setTimeout(function(){ show(true); }, 180);
-      }
-
-      $("onbClose") && $("onbClose").addEventListener("click", dismiss);
-      $("onbStartEmpty") && $("onbStartEmpty").addEventListener("click", dismiss);
-
-      $("onbTryA") && $("onbTryA").addEventListener("click", function(){
-        dismiss(); click("btnLoadA"); window.setTimeout(function(){ click("btnScan"); }, 80);
-      });
-      $("onbTryB") && $("onbTryB").addEventListener("click", function(){
-        dismiss(); click("btnLoadB"); window.setTimeout(function(){ click("btnScan"); }, 80);
-      });
-
-      $("miniTryA") && $("miniTryA").addEventListener("click", function(){
-        click("btnLoadA"); window.setTimeout(function(){ click("btnScan"); }, 80);
-      });
-      $("miniTryB") && $("miniTryB").addEventListener("click", function(){
-        click("btnLoadB"); window.setTimeout(function(){ click("btnScan"); }, 80);
-      });
-
-      // ESC to close
-      document.addEventListener("keydown", function(e){
-        if(e.key === "Escape"){
-          var ob = $("onboarding");
-          if(ob && !ob.classList.contains("onb-hidden")) dismiss();
-        }
-      });
-    })();
-  </script>
 </body>
 </html>
