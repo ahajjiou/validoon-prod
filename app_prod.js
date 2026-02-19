@@ -1,9 +1,4 @@
 // app_prod.js — Validoon release: v3.1.0
-// Goals achieved (strict):
-// - Actionable Remediation Layer (UI + JSON)
-// - Reduced UI fragility (fixed placeholders in HTML)
-// - Overall confidence + meter (audit-friendly)
-// - Per-line primary reason (ranking rationale)
 // Local-only. Deterministic. No network calls.
 
 (() => {
@@ -52,11 +47,17 @@
     "topReason","integrityBadge","engineBadge",
     "signals","remedList","rows"
   ];
+
+  // لا نوقف المحرك لو في ID ناقص، نكتفي بالتحذير
+  let missing = [];
   for (const k of REQUIRED) {
     if (!els[k]) {
       console.error(`[Validoon] Missing required DOM id="${k}". Ensure index.html matches v3.1.0.`);
-      return;
+      missing.push(k);
     }
+  }
+  if (missing.length) {
+    console.warn("[Validoon] Continuing with missing elements:", missing);
   }
 
   // ============================
@@ -112,13 +113,14 @@
   // ============================
   const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
+  // إصلاح escapeHtml بدون replaceAll
   function escapeHtml(s) {
     return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function shannonEntropy(str) {
@@ -263,7 +265,7 @@
   ];
 
   // ============================
-  // Attack chain correlation (defensive labeling only)
+  // Attack chain correlation
   // ============================
   function correlateAttackChain(foundIds) {
     const set = new Set(foundIds);
@@ -287,7 +289,7 @@
   }
 
   // ============================
-  // Scoring per-line (+ primary reason)
+  // Scoring per-line
   // ============================
   function scoreLine(trimmed, ctx) {
     if (ctx.isComment) return { decision: "ALLOW", conf: 0, hits: [], primary: "—" };
@@ -312,7 +314,6 @@
     let conf = sev;
     if (benign && hits.length) conf *= 0.65;
 
-    // Context aggregation: cmd + high neighbor => escalate (defensive triage)
     const n = ctx.neighborSignals || new Set();
     const hasHighNeighbor = n.has("INFRA:DOCKER_SOCK") || n.has("INFRA:DOCKER_PRIV") || n.has("SSRF:METADATA_IP") || n.has("SSRF:IAM_CRED_PATH");
     const hasCmd = hits.some((h) => h.id.startsWith("CMD:")) || RX.cmdWhoami.test(trimmed) || RX.cmdId.test(trimmed) || RX.cmdUname.test(trimmed);
@@ -335,7 +336,7 @@
   }
 
   // ============================
-  // Entropy detection (policy-aware) + reason tags
+  // Entropy detection
   // ============================
   function hasKeywordWindow(lineLower, startIdx, endIdx) {
     const windowSize = 25;
@@ -355,7 +356,6 @@
     const hashLike = FP.isLikelyHashOrId(trimmed);
     const benign = isBenignContext(trimmed) || hashLike;
 
-    // tokens
     const reTok = /[A-Za-z0-9+/_=\\-.]{24,}/g;
     const m = trimmed.match(reTok);
     if (!m) return { hit: false };
@@ -388,7 +388,7 @@
   }
 
   // ============================
-  // Overall verdict + confidence
+  // Overall verdict
   // ============================
   function computeOverall(results, activeIds) {
     const counts = { BLOCK: 0, WARN: 0, ALLOW: 0 };
@@ -406,10 +406,6 @@
 
     const chain = correlateAttackChain(activeIds);
 
-    // Overall confidence: deterministic, explainable
-    // - Prefer strongest block confidence
-    // - Else strongest warn confidence
-    // - Chain boosts confidence slightly (still capped)
     let overallConf = verdict === "DANGER" ? maxBlock : (verdict === "WARN" ? maxWarn : 0.88);
     if (chain.containerTakeover || chain.cloudCreds) overallConf = Math.max(overallConf, 0.92);
     if (chain.aiOps) overallConf = Math.max(overallConf, 0.86);
@@ -419,7 +415,7 @@
   }
 
   // ============================
-  // Top Reason (single)
+  // Top Reason
   // ============================
   function computeTopReason(report) {
     if (report.chain.containerTakeover) return "Attack chain detected: container takeover risk (docker/privilege + sensitive read).";
@@ -449,10 +445,9 @@
   }
 
   // ============================
-  // Actionable Remediation Layer (defensive)
+  // Remediation
   // ============================
   const REMED = {
-    // Chains
     "ATTACK_CHAIN:CLOUD_CREDS": {
       name: "Block metadata SSRF exposure",
       why: "Requests to cloud instance metadata can leak temporary credentials.",
@@ -480,8 +475,6 @@
         "Log and review high-risk prompts; separate roles (analysis vs execution)."
       ]
     },
-
-    // Core signals
     "SSRF:METADATA_IP": {
       name: "SSRF to metadata IP",
       why: "Metadata endpoints may reveal credentials or sensitive instance data.",
@@ -545,8 +538,6 @@
         "Enforce logging policies to avoid printing secrets."
       ]
     },
-
-    // Entropy
     "ENTROPY:AUTH_CONTEXT_BLOCK": {
       name: "High-entropy in auth context",
       why: "Bearer/Authorization contexts commonly carry credentials.",
@@ -574,8 +565,6 @@
         "Prefer DEV mode for CI logs; use STRICT in production incident review."
       ]
     },
-
-    // AI / Web
     "AI:ROLE_OVERRIDE": {
       name: "Prompt override attempt",
       why: "Attempts to bypass system rules can lead to unsafe automation behavior.",
@@ -608,16 +597,13 @@
   function remediationFor(report) {
     const items = [];
 
-    // Chain-first
     if (report.chain.cloudCreds) items.push({ tag: "ATTACK_CHAIN:CLOUD_CREDS", ...REMED["ATTACK_CHAIN:CLOUD_CREDS"] });
     if (report.chain.containerTakeover) items.push({ tag: "ATTACK_CHAIN:CONTAINER_TAKEOVER", ...REMED["ATTACK_CHAIN:CONTAINER_TAKEOVER"] });
     if (report.chain.aiOps) items.push({ tag: "ATTACK_CHAIN:AI_TO_OPS", ...REMED["ATTACK_CHAIN:AI_TO_OPS"] });
 
-    // Then top entropy reasons
     const entropyOrder = ["ENTROPY:AUTH_CONTEXT_BLOCK","ENTROPY:CONSECUTIVE_ESCALATION","ENTROPY:HIGH_SECRET_LIKE"];
     for (const e of entropyOrder) if (report.activeSignals.includes(e) && REMED[e]) items.push({ tag: e, ...REMED[e] });
 
-    // Then strongest signals (cap)
     const priority = [
       "SECRET:PRIVATE_KEY","SSRF:IAM_CRED_PATH","SSRF:METADATA_IP","INFRA:DOCKER_SOCK","INFRA:DOCKER_PRIV",
       "SECRETS:AWS_ACCESS_KEY","SECRETS:GENERIC_LABEL","AI:ROLE_OVERRIDE","WEB:<script>","WEB:INLINE_EVENT"
@@ -626,7 +612,6 @@
       if (report.activeSignals.includes(p) && REMED[p]) items.push({ tag: p, ...REMED[p] });
     }
 
-    // Deduplicate by tag
     const seen = new Set();
     const out = [];
     for (const it of items) {
@@ -635,7 +620,6 @@
       out.push(it);
     }
 
-    // If secure, show minimal hygiene
     if (report.verdict === "SECURE") {
       out.unshift({
         tag: "HYGIENE:BASELINE",
@@ -649,7 +633,6 @@
       });
     }
 
-    // Cap list to keep UI sharp
     return out.slice(0, 6);
   }
 
@@ -663,32 +646,35 @@
       verdict === "DANGER" ? "verdict-danger" :
       verdict === "WARN" ? "verdict-warn" :
       "verdict-secure";
-    els.verdictBox.className = "verdict " + cls;
+    if (els.verdictBox) {
+      els.verdictBox.className = "verdict " + cls;
+    }
   }
 
   function setCounters(scans, counts) {
-    els.kScans.textContent = String(scans);
-    els.kBlock.textContent = String(counts.BLOCK || 0);
-    els.kWarn.textContent = String(counts.WARN || 0);
-    els.kAllow.textContent = String(counts.ALLOW || 0);
+    if (els.kScans) els.kScans.textContent = String(scans);
+    if (els.kBlock) els.kBlock.textContent = String(counts.BLOCK || 0);
+    if (els.kWarn) els.kWarn.textContent = String(counts.WARN || 0);
+    if (els.kAllow) els.kAllow.textContent = String(counts.ALLOW || 0);
   }
 
   function setOverallConfidence(conf01) {
     const pct = Math.round(clamp01(conf01) * 100);
-    els.overallConf.textContent = `${pct}%`;
-    els.overallMeter.style.width = `${pct}%`;
-
-    // Dynamic meter color by risk level
-    if (pct >= 85) {
-      els.overallMeter.style.background = "linear-gradient(90deg,#ff5b5b,#ff884d)";
-    } else if (pct >= 60) {
-      els.overallMeter.style.background = "linear-gradient(90deg,#ffb84d,#ffd36b)";
-    } else {
-      els.overallMeter.style.background = "linear-gradient(90deg,#35d07f,#6bb6ff)";
+    if (els.overallConf) els.overallConf.textContent = `${pct}%`;
+    if (els.overallMeter) {
+      els.overallMeter.style.width = `${pct}%`;
+      if (pct >= 85) {
+        els.overallMeter.style.background = "linear-gradient(90deg,#ff5b5b,#ff884d)";
+      } else if (pct >= 60) {
+        els.overallMeter.style.background = "linear-gradient(90deg,#ffb84d,#ffd36b)";
+      } else {
+        els.overallMeter.style.background = "linear-gradient(90deg,#35d07f,#6bb6ff)";
+      }
     }
   }
 
   function renderSignals(activeIds, chain) {
+    if (!els.signals) return;
     els.signals.innerHTML = "";
     const ids = Array.from(new Set(activeIds)).sort();
 
@@ -721,6 +707,7 @@
   }
 
   function renderRemediation(items) {
+    if (!els.remedList) return;
     els.remedList.innerHTML = "";
     if (!items.length) {
       const d = document.createElement("div");
@@ -769,6 +756,7 @@
   }
 
   function renderRows(lines, rowData) {
+    if (!els.rows) return;
     els.rows.innerHTML = "";
     const frag = document.createDocumentFragment();
 
@@ -812,7 +800,7 @@
   }
 
   // ============================
-  // Scan core (deterministic)
+  // Scan core
   // ============================
   let scans = 0;
   let lastReport = null;
@@ -830,7 +818,6 @@
       return ids;
     });
 
-    // Precompute entropy candidates
     const entropyCand = lines.map((L) => isProbablyComment(L.trimmed) ? { hit: false } : detectHighEntropySecretLike(L.trimmed));
 
     const results = [];
@@ -853,7 +840,6 @@
         globalBenignHints,
       });
 
-      // entropy layer
       const ec = entropyCand[i];
       const meaningful = !!L.trimmed && !isProbablyComment(L.trimmed);
 
@@ -866,14 +852,12 @@
         scored.hits.push({ id: "ENTROPY:HIGH_SECRET_LIKE", kind: "warn", weight: 0.75 });
         activeIds.push("ENTROPY:HIGH_SECRET_LIKE");
 
-        // baseline: ALLOW->WARN if not benign
         if (scored.decision === "ALLOW" && !ec.benignContext) {
           scored.decision = "WARN";
           scored.conf = Math.max(scored.conf, POLICY_MODE === "STRICT" ? 0.80 : (POLICY_MODE === "BALANCED" ? 0.75 : 0.70));
           reason = "ENTROPY:HIGH_SECRET_LIKE";
         }
 
-        // auth context -> BLOCK (even DEV)
         if ((ec.hasAuthHeader || ec.hasBearer) && !ec.benignContext) {
           scored.hits.push({ id: "ENTROPY:AUTH_CONTEXT_BLOCK", kind: "block", weight: 0.92 });
           activeIds.push("ENTROPY:AUTH_CONTEXT_BLOCK");
@@ -882,7 +866,6 @@
           reason = "ENTROPY:AUTH_CONTEXT_BLOCK";
         }
 
-        // consecutive escalation (STRICT/BALANCED only)
         if (t.CONSEC_BLOCK && consecutiveEntropy >= 2 && !ec.benignContext) {
           if (!t.DEV_NO_BLOCK) {
             scored.hits.push({ id: "ENTROPY:CONSECUTIVE_ESCALATION", kind: "block", weight: 0.90 });
@@ -893,7 +876,6 @@
           }
         }
 
-        // DEV safeguard
         if (t.DEV_NO_BLOCK && reason === "ENTROPY:CONSECUTIVE_ESCALATION") {
           scored.decision = "WARN";
           scored.conf = Math.max(scored.conf, 0.75);
@@ -901,7 +883,6 @@
         }
       }
 
-      // Track ids
       for (const h of scored.hits) activeIds.push(h.id);
 
       results.push({
@@ -940,8 +921,6 @@
     };
 
     report.topReason = computeTopReason(report);
-
-    // remediation list
     report.remediation = remediationFor(report);
 
     return report;
@@ -970,9 +949,9 @@
     setCounters(scans, report.counts);
     setOverallConfidence(report.overallConfidence / 100);
 
-    els.topReason.textContent = report.topReason || "—";
-    els.integrityBadge.textContent = "INTEGRITY: LOCAL";
-    els.engineBadge.textContent = "ENGINE: DETERMINISTIC";
+    if (els.topReason) els.topReason.textContent = report.topReason || "—";
+    if (els.integrityBadge) els.integrityBadge.textContent = "INTEGRITY: LOCAL";
+    if (els.engineBadge) els.engineBadge.textContent = "ENGINE: DETERMINISTIC";
 
     renderSignals(report.activeSignals, report.chain);
     renderRemediation(report.remediation || []);
@@ -998,28 +977,28 @@
 
   function runScan() {
     scans += 1;
-    const report = scanText(els.input.value || "");
+    const report = scanText(els.input ? els.input.value || "" : "");
     lastReport = report;
     renderReport(report);
-    els.kScans.textContent = String(scans);
+    if (els.kScans) els.kScans.textContent = String(scans);
   }
 
   function clearAll() {
-    els.input.value = "";
+    if (els.input) els.input.value = "";
     lastReport = null;
 
     setVerdict("IDLE");
     setCounters(scans, { BLOCK: 0, WARN: 0, ALLOW: 0 });
     setOverallConfidence(0);
 
-    els.topReason.textContent = "—";
-    els.signals.innerHTML = "";
-    els.remedList.innerHTML = "";
-    els.rows.innerHTML = "";
+    if (els.topReason) els.topReason.textContent = "—";
+    if (els.signals) els.signals.innerHTML = "";
+    if (els.remedList) els.remedList.innerHTML = "";
+    if (els.rows) els.rows.innerHTML = "";
   }
 
   // ============================
-  // Test payloads (safe)
+  // Test payloads
   // ============================
   const TEST_A_CLOUD = [
     "# TEST A: cloud metadata + infra signals (defensive test)",
@@ -1042,41 +1021,43 @@
   // Boot
   // ============================
   function boot() {
-    // Version + mode
-    els.buildStamp.textContent = `Validoon ${BUILD} • Local Deterministic Engine`;
-    els.policyHint.textContent = `Mode: ${POLICY_MODE} • ${POLICY.describe(POLICY_MODE)}`;
+    if (els.buildStamp) els.buildStamp.textContent = `Validoon ${BUILD} • Local Deterministic Engine`;
+    if (els.policyHint) els.policyHint.textContent = `Mode: ${POLICY_MODE} • ${POLICY.describe(POLICY_MODE)}`;
 
-    // Policy select sync
-    els.policySelect.value = POLICY_MODE;
-    els.policySelect.addEventListener("change", () => {
-      POLICY_MODE = POLICY.setMode(els.policySelect.value);
+    if (els.policySelect) {
       els.policySelect.value = POLICY_MODE;
-      els.policyHint.textContent = `Mode: ${POLICY_MODE} • ${POLICY.describe(POLICY_MODE)}`;
-      // Re-scan if input exists
-      if ((els.input.value || "").trim()) runScan();
-    });
+      els.policySelect.addEventListener("change", () => {
+        POLICY_MODE = POLICY.setMode(els.policySelect.value);
+        els.policySelect.value = POLICY_MODE;
+        if (els.policyHint) els.policyHint.textContent = `Mode: ${POLICY_MODE} • ${POLICY.describe(POLICY_MODE)}`;
+        if ((els.input && (els.input.value || "").trim())) runScan();
+      });
+    }
 
-    // Buttons
-    els.btnLoadA?.addEventListener("click", () => { els.input.value = TEST_A_CLOUD; runScan(); });
-    els.btnLoadB?.addEventListener("click", () => { els.input.value = TEST_B_DEV_NOISE; runScan(); });
-    els.btnScan?.addEventListener("click", runScan);
+    if (els.btnLoadA) els.btnLoadA.addEventListener("click", () => { if (els.input) els.input.value = TEST_A_CLOUD; runScan(); });
+    if (els.btnLoadB) els.btnLoadB.addEventListener("click", () => { if (els.input) els.input.value = TEST_B_DEV_NOISE; runScan(); });
+    if (els.btnScan)  els.btnScan.addEventListener("click", runScan);
 
-    els.btnExport?.addEventListener("click", () => {
-      if (!lastReport) runScan();
-      const safe = lastReport || { build: BUILD, error: "no_report" };
-      const name = `validoon_report_${(safe.policyMode || "mode").toLowerCase()}_${new Date().toISOString().replaceAll(":", "-")}.json`;
-      downloadJSON(name, safe);
-    });
+    if (els.btnExport) {
+      els.btnExport.addEventListener("click", () => {
+        if (!lastReport) runScan();
+        const safe = lastReport || { build: BUILD, error: "no_report" };
+        const ts = new Date().toISOString().replace(/:/g, "-");
+        const name = `validoon_report_${(safe.policyMode || "mode").toLowerCase()}_${ts}.json`;
+        downloadJSON(name, safe);
+      });
+    }
 
-    els.btnClear?.addEventListener("click", clearAll);
+    if (els.btnClear) els.btnClear.addEventListener("click", clearAll);
 
-    // Initial state
     scans = 0;
-    els.kScans.textContent = "0";
+    if (els.kScans) els.kScans.textContent = "0";
     clearAll();
   }
 
-  document.readyState === "loading"
-    ? document.addEventListener("DOMContentLoaded", boot)
-    : boot();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
