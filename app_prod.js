@@ -113,7 +113,6 @@
   // ============================
   const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
-  // إصلاح escapeHtml بدون replaceAll
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, "&amp;")
@@ -356,7 +355,9 @@
     const hashLike = FP.isLikelyHashOrId(trimmed);
     const benign = isBenignContext(trimmed) || hashLike;
 
-    const reTok = /[A-Za-z0-9+/_=\\-.]{24,}/g;
+    // الإصلاح هنا: ترتيب الـ character class بحيث يكون '-' في النهاية لتفادي Range error
+    const reTok = /[A-Za-z0-9+/_=.\-]{24,}/g;
+
     const m = trimmed.match(reTok);
     if (!m) return { hit: false };
 
@@ -370,7 +371,7 @@
 
       const idx = trimmed.indexOf(tok);
       const nearKw = idx >= 0 ? hasKeywordWindow(lower, idx, idx + tok.length) : false;
-      const base64Like = /^[A-Za-z0-9+/_=-]+$/.test(tok) && /[=_-]/.test(tok);
+      const base64Like = /^[A-Za-z0-9+/_=.\-]+$/.test(tok); // متوافق مع نفس الـ class
 
       const allowedHit =
         hasAuthHeader ||
@@ -641,7 +642,7 @@
   // ============================
   function setVerdict(verdict) {
     const label = verdict === "SECURE" ? "SECURE" : verdict;
-    els.verdictText.textContent = label;
+    if (els.verdictText) els.verdictText.textContent = label;
     const cls =
       verdict === "DANGER" ? "verdict-danger" :
       verdict === "WARN" ? "verdict-warn" :
