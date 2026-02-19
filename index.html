@@ -3,240 +3,112 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="dark" />
-  <title>Validoon — Local Deterministic Security Pre-Check</title>
-  <link rel="stylesheet" href="style.css?v=2.0.0" />
+  <title>Validoon — Local Deterministic Security Engine</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">V</div>
-      <div>
-        <div class="brand-name">Validoon</div>
-        <div class="brand-sub">Local deterministic scan for technical text (AI, Cloud, Infra) — browser-only</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-badge">V</div>
+        <div class="brand-text">
+          <div class="brand-name">Validoon</div>
+          <div class="brand-sub">Local • Deterministic • Privacy-first — AI + Cloud Threat Signals</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="policy">
+          <div class="policy-label">Policy</div>
+          <select id="policySelect" class="select">
+            <option value="BALANCED">BALANCED</option>
+            <option value="STRICT">STRICT</option>
+            <option value="DEV">DEV</option>
+          </select>
+        </div>
+
+        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A (Cloud)</button>
+        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B (Dev Noise)</button>
+        <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
+        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
+        <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
       </div>
     </div>
 
-    <div class="actions">
-      <button class="btn" id="btnLoadA" type="button">Load Test A (Cloud)</button>
-      <button class="btn" id="btnLoadB" type="button">Load Test B (AI)</button>
-      <button class="btn btn-primary" id="btnScan" type="button">Execute Scan</button>
-      <button class="btn" id="btnExport" type="button">Export JSON</button>
-      <button class="btn btn-danger" id="btnClear" type="button">Clear</button>
-    </div>
-
-    <div class="statusline">
-      <span class="dot ok"></span>
-      <span>Engine Active — No Upload</span>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <!-- HERO -->
-    <section class="hero card">
-      <div class="hero-left">
-        <div class="pill">Pre-send security check</div>
-        <h1>Scan any technical text before you paste it into AI, APIs, or production.</h1>
-        <p class="lead">
-          Validoon labels each line as <span class="inline-badge b-block">BLOCK</span>,
-          <span class="inline-badge b-warn">WARN</span>, or <span class="inline-badge b-allow">ALLOW</span>
-          using deterministic rules — locally in your browser.
-        </p>
-
-        <div class="chips">
-          <span class="chip chip-ok">Local-only</span>
-          <span class="chip chip-neutral">Deterministic rules</span>
-          <span class="chip chip-neutral">No server upload</span>
-          <span class="chip chip-neutral">Works offline</span>
-          <span class="chip chip-neutral">Versioned</span>
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card card-lg">
+        <div class="card-h">
+          <div class="h-title">Input Stream</div>
+          <div class="h-sub">Paste payloads/logs/snippets. Local-only analysis.</div>
         </div>
 
-        <div class="cta">
-          <button class="btn btn-primary" id="btnLoadA2" type="button">Start with a real example</button>
-          <button class="btn" id="btnFocusInput" type="button">Paste my text</button>
-        </div>
+        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
 
-        <div class="micro">
-          <div id="buildStamp" class="muted">Version: —</div>
+        <div class="buildline">
+          <div class="footer-note" id="buildStamp"></div>
+          <div class="hint-mini" id="policyHint"></div>
         </div>
       </div>
 
-      <div class="hero-right">
-        <div class="how card-ghost">
-          <div class="how-title">How to use (20 seconds)</div>
-          <ol class="how-list">
-            <li>Paste text into <b>Input Stream</b>.</li>
-            <li>Click <b>Execute Scan</b>.</li>
-            <li>Read decisions and act.</li>
-          </ol>
+      <!-- RIGHT -->
+      <div class="card card-lg">
+        <div id="verdictBox" class="verdict verdict-secure">
+          <div class="verdict-title" id="verdictText">READY</div>
 
-          <div class="how-title">How to read results</div>
-          <div class="legend">
-            <div><span class="inline-badge b-block">BLOCK</span> High-risk signal. Do not use as-is.</div>
-            <div><span class="inline-badge b-warn">WARN</span> Suspicious. Review before use.</div>
-            <div><span class="inline-badge b-allow">ALLOW</span> No known high-risk signals detected.</div>
-          </div>
-
-          <div class="tip muted">Tip: use Load Test A/B to learn what “danger” looks like.</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TRUST / PROOF -->
-    <section class="grid3">
-      <div class="card">
-        <div class="card-title">Engine Transparency & Proof</div>
-        <div class="kv">
-          <div class="kv-row"><span>Decision model</span><b>Deterministic rules</b></div>
-          <div class="kv-row"><span>Data handling</span><b>Local only</b></div>
-          <div class="kv-row"><span>Build</span><b id="integrityBadge" class="badge-inline">Integrity: LOCAL</b></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Coverage</div>
-        <ul class="bullets">
-          <li>Cloud metadata SSRF patterns</li>
-          <li>Container / Docker / K8s abuse primitives</li>
-          <li>Prompt injection / override phrases</li>
-          <li>Sensitive secret markers</li>
-          <li>Web injection markers</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Limitations</div>
-        <ul class="bullets">
-          <li>Heuristic pre-check (not a full SIEM)</li>
-          <li>ALLOW does not guarantee safety</li>
-          <li>Edge-case ambiguity can happen</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- MAIN WORK AREA -->
-    <section class="grid2">
-      <div class="card">
-        <div class="card-title">Input Stream</div>
-        <div class="muted small">Paste prompts, logs, API requests, configs, or snippets. One line = one decision.</div>
-
-        <textarea id="input" class="input" placeholder="Paste technical text here..."></textarea>
-
-        <div class="subrow">
-          <div class="muted small">Recommended flow: Load Test A/B → observe results → paste your text → Execute Scan.</div>
-          <div class="subactions">
-            <button class="btn btn-small" id="actSplit" type="button">Split safe/risky</button>
-            <button class="btn btn-small" id="actCopyBlock" type="button">Copy BLOCK</button>
-            <button class="btn btn-small" id="actShowBlock" type="button">Show BLOCK</button>
-            <span id="actionHint" class="muted small"></span>
-          </div>
-        </div>
-      </div>
-
-      <aside class="stack">
-        <!-- EXEC SUMMARY -->
-        <div class="card">
-          <div class="card-title row">
-            <span>Executive Risk Summary</span>
-            <span class="muted small">Deterministic</span>
-          </div>
-
-          <div class="summary">
-            <div id="verdictBox" class="verdict verdict-secure"><div id="verdictText">READY</div></div>
-
-            <div class="kpis">
-              <div class="kpi">
-                <div class="kpi-label">Scans</div>
-                <div class="kpi-val" id="kScans">0</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-label">Block</div>
-                <div class="kpi-val" id="kBlock">0</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-label">Warn</div>
-                <div class="kpi-val" id="kWarn">0</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-label">Allow</div>
-                <div class="kpi-val" id="kAllow">0</div>
-              </div>
+          <div class="kpis">
+            <div class="kpi">
+              <div class="kpi-label">Overall confidence</div>
+              <div class="kpi-value" id="overallConf">—</div>
+              <div class="meter"><div class="meter-fill" id="overallMeter"></div></div>
             </div>
 
-            <div class="mini-hr"></div>
-
-            <div class="row">
-              <div class="muted small">Overall</div>
-              <div class="pill pill-solid" id="riskLevel">READY</div>
+            <div class="stats">
+              <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
+              <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
+              <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
+              <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
             </div>
-            <div class="muted small" id="riskDistribution">BLOCK 0 • WARN 0 • ALLOW 0</div>
-
-            <div class="mini-hr"></div>
-
-            <div class="muted small">Top reasons</div>
-            <div id="topReasons" class="chips"></div>
-
-            <div class="mini-hr"></div>
-
-            <div class="muted small">Attack chain correlation</div>
-            <div id="attackChains" class="stack-mini"></div>
           </div>
         </div>
 
-        <!-- ACTIVE SIGNALS -->
-        <div class="card">
-          <div class="card-title">Active Signals</div>
+        <div class="explain">
+          <div class="explain-title">Decision summary</div>
+          <div class="explain-reason" id="topReason">—</div>
+          <div class="badges">
+            <div class="badge" id="integrityBadge">INTEGRITY: LOCAL</div>
+            <div class="badge" id="engineBadge">ENGINE: DETERMINISTIC</div>
+          </div>
+        </div>
+
+        <div class="signals">
+          <div class="signals-title">Active Signals</div>
           <div id="signals" class="chips"></div>
         </div>
 
-        <!-- COMMON QUESTIONS -->
-        <div class="card">
-          <div class="card-title">Common questions</div>
-          <div class="muted small">
-            <b>Why did it flag?</b> Open “Top reasons” and “Attack chain correlation” to see dominant signals and correlated lines.<br/>
-            <b>What should I do next?</b> Remove BLOCK lines, review WARN lines, then rescan.
+        <div class="remed">
+          <div class="remed-title">Actionable Remediation</div>
+          <div class="remed-sub">Next steps to reduce risk (no network required).</div>
+          <div id="remedList" class="remed-list"></div>
+        </div>
+      </div>
+
+      <!-- FULL WIDTH TABLE -->
+      <div class="card card-xl">
+        <div class="table">
+          <div class="thead">
+            <div>Input Content</div>
+            <div>Decision</div>
+            <div>Confidence</div>
+            <div>Entropy</div>
+            <div>Reason</div>
           </div>
-        </div>
-      </aside>
-    </section>
-
-    <!-- DECISIONS TABLE -->
-    <section class="card">
-      <div class="table-head">
-        <div class="card-title">Line Decisions</div>
-
-        <div class="tabs">
-          <button class="tab active" data-filter="ALL" type="button">All</button>
-          <button class="tab" data-filter="BLOCK" type="button">Block</button>
-          <button class="tab" data-filter="WARN" type="button">Warn</button>
-          <button class="tab" data-filter="ALLOW" type="button">Allow</button>
+          <div id="rows"></div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="thead">
-        <div class="th th-text">Input Content</div>
-        <div class="th">Decision</div>
-        <div class="th th-num">Conf</div>
-        <div class="th th-num">Entropy</div>
-      </div>
-
-      <div id="rows" class="tbody"></div>
-
-      <div class="foot muted small">
-        Validoon — Enterprise Local Threat Pre-Check Layer • Local-only • Deterministic • Versioned
-      </div>
-    </section>
-  </main>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const a = document.getElementById("btnLoadA2");
-      const b = document.getElementById("btnFocusInput");
-      const input = document.getElementById("input");
-      a?.addEventListener("click", () => document.getElementById("btnLoadA")?.click());
-      b?.addEventListener("click", () => input?.focus());
-    });
-  </script>
-  <script src="app_prod.js?v=2.0.0"></script>
+  <script src="app_prod.js" defer></script>
 </body>
 </html>
