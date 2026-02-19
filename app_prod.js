@@ -9,7 +9,7 @@
 (() => {
   "use strict";
 
-  const BUILD = "release: v3.1.0 stable deterministic security engine + remediation layer";
+  const BUILD = "v3.1.0";
   const $ = (id) => document.getElementById(id);
 
   const els = {
@@ -399,7 +399,7 @@
       if (r.decision === "WARN") maxWarn = Math.max(maxWarn, r.conf);
     }
 
-    let verdict = "READY";
+    let verdict = "IDLE";
     if (counts.BLOCK > 0) verdict = "DANGER";
     else if (counts.WARN > 0) verdict = "WARN";
     else if (counts.ALLOW > 0) verdict = "SECURE";
@@ -450,8 +450,6 @@
 
   // ============================
   // Actionable Remediation Layer (defensive)
-  // - One item = why + concrete next steps
-  // - No offensive instructions
   // ============================
   const REMED = {
     // Chains
@@ -659,8 +657,13 @@
   // Rendering
   // ============================
   function setVerdict(verdict) {
-    els.verdictText.textContent = verdict === "SECURE" ? "SECURE" : verdict;
-    els.verdictBox.className = "verdict " + (verdict === "DANGER" ? "verdict-danger" : verdict === "WARN" ? "verdict-warn" : "verdict-secure");
+    const label = verdict === "SECURE" ? "SECURE" : verdict;
+    els.verdictText.textContent = label;
+    const cls =
+      verdict === "DANGER" ? "verdict-danger" :
+      verdict === "WARN" ? "verdict-warn" :
+      "verdict-secure";
+    els.verdictBox.className = "verdict " + cls;
   }
 
   function setCounters(scans, counts) {
@@ -674,6 +677,15 @@
     const pct = Math.round(clamp01(conf01) * 100);
     els.overallConf.textContent = `${pct}%`;
     els.overallMeter.style.width = `${pct}%`;
+
+    // Dynamic meter color by risk level
+    if (pct >= 85) {
+      els.overallMeter.style.background = "linear-gradient(90deg,#ff5b5b,#ff884d)";
+    } else if (pct >= 60) {
+      els.overallMeter.style.background = "linear-gradient(90deg,#ffb84d,#ffd36b)";
+    } else {
+      els.overallMeter.style.background = "linear-gradient(90deg,#35d07f,#6bb6ff)";
+    }
   }
 
   function renderSignals(activeIds, chain) {
@@ -996,7 +1008,7 @@
     els.input.value = "";
     lastReport = null;
 
-    setVerdict("READY");
+    setVerdict("IDLE");
     setCounters(scans, { BLOCK: 0, WARN: 0, ALLOW: 0 });
     setOverallConfidence(0);
 
@@ -1031,7 +1043,7 @@
   // ============================
   function boot() {
     // Version + mode
-    els.buildStamp.textContent = `Version: ${BUILD}`;
+    els.buildStamp.textContent = `Validoon ${BUILD} • Local Deterministic Engine`;
     els.policyHint.textContent = `Mode: ${POLICY_MODE} • ${POLICY.describe(POLICY_MODE)}`;
 
     // Policy select sync
