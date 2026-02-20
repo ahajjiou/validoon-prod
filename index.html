@@ -3,112 +3,170 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Validoon — Local Deterministic Security Engine</title>
+  <title>Validoon — Deterministic Security Engine</title>
+  <meta name="description" content="Local-only deterministic scanner for logs/configs/prompts. Export JSON report." />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="app">
-    <div class="topbar">
+    <header class="topbar">
       <div class="brand">
-        <div class="brand-badge">V</div>
-        <div class="brand-text">
+        <div class="logo">V</div>
+        <div class="brand-meta">
           <div class="brand-name">Validoon</div>
-          <div class="brand-sub">Local • Deterministic • Privacy-first — AI + Cloud Threat Signals</div>
+          <div class="brand-sub">Deterministic Security Engine (Local-only)</div>
         </div>
       </div>
 
-      <div class="topbar-actions">
-        <div class="policy">
-          <div class="policy-label">Policy</div>
-          <select id="policySelect" class="select">
-            <option value="BALANCED">BALANCED</option>
-            <option value="STRICT">STRICT</option>
-            <option value="DEV">DEV</option>
-          </select>
-        </div>
-
-        <button class="btn btn-ghost btn-pill" id="btnLoadA">Load Test A (Cloud)</button>
-        <button class="btn btn-ghost btn-pill" id="btnLoadB">Load Test B (Dev Noise)</button>
-        <button class="btn btn-primary btn-pill" id="btnScan">Execute Scan</button>
-        <button class="btn btn-ghost btn-pill" id="btnExport">Export JSON</button>
-        <button class="btn btn-danger btn-pill" id="btnClear">Clear</button>
+      <div class="topbar-right">
+        <div class="badge" id="integrityBadge">INTEGRITY: LOCAL</div>
+        <div class="badge" id="engineBadge">ENGINE: DETERMINISTIC</div>
       </div>
-    </div>
+    </header>
 
-    <div class="grid">
-      <!-- LEFT -->
-      <div class="card card-lg">
-        <div class="card-h">
-          <div class="h-title">Input Stream</div>
-          <div class="h-sub">Paste payloads/logs/snippets. Local-only analysis.</div>
+    <main class="grid">
+      <!-- LEFT: Input + Controls -->
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title">Input</div>
+          <div class="card-sub" id="buildStamp">Build: —</div>
         </div>
 
-        <textarea id="input" class="textarea" placeholder="Paste payloads here..."></textarea>
+        <div class="controls">
+          <div class="control">
+            <label for="policySelect">Policy Mode</label>
+            <select id="policySelect">
+              <option value="BALANCED">BALANCED</option>
+              <option value="STRICT">STRICT</option>
+              <option value="DEV">DEV</option>
+            </select>
+            <div class="hint" id="policyHint">Mode: —</div>
+          </div>
 
-        <div class="buildline">
-          <div class="footer-note" id="buildStamp"></div>
-          <div class="hint-mini" id="policyHint"></div>
+          <div class="control-row">
+            <button class="btn" id="btnLoadA" type="button">Load Test A</button>
+            <button class="btn" id="btnLoadB" type="button">Load Test B</button>
+          </div>
+
+          <div class="control-row">
+            <button class="btn primary" id="btnScan" type="button">Scan</button>
+            <button class="btn" id="btnExport" type="button">Export JSON</button>
+            <button class="btn danger" id="btnClear" type="button">Clear</button>
+          </div>
         </div>
-      </div>
 
-      <!-- RIGHT -->
-      <div class="card card-lg">
-        <div id="verdictBox" class="verdict verdict-secure">
-          <div class="verdict-title" id="verdictText">IDLE</div>
+        <textarea
+          id="input"
+          class="textarea mono"
+          spellcheck="false"
+          placeholder="Paste logs / configs / prompts here…"
+        ></textarea>
+
+        <div class="footnote">
+          No data is sent anywhere. Analysis runs locally in your browser.
+        </div>
+      </section>
+
+      <!-- RIGHT: Output -->
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title">Result</div>
+          <div class="card-sub">Verdict, signals, remediation, and line-by-line decisions</div>
+        </div>
+
+        <div class="result-top">
+          <div class="verdict verdict-secure" id="verdictBox">
+            <div class="verdict-label">Verdict</div>
+            <div class="verdict-value" id="verdictText">READY</div>
+
+            <div class="meter">
+              <div class="meter-label">
+                <span>Overall Confidence</span>
+                <span class="meter-val" id="overallConf">0%</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill" id="overallMeter" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
 
           <div class="kpis">
             <div class="kpi">
-              <div class="kpi-label">Overall confidence</div>
-              <div class="kpi-value" id="overallConf">—</div>
-              <div class="meter"><div class="meter-fill" id="overallMeter"></div></div>
+              <div class="kpi-label">Scans</div>
+              <div class="kpi-val" id="kScans">0</div>
             </div>
-
-            <div class="stats">
-              <div class="stat"><div>Scans</div><div id="kScans">0</div></div>
-              <div class="stat"><div>Block</div><div id="kBlock" class="bad">0</div></div>
-              <div class="stat"><div>Warn</div><div id="kWarn" class="warn">0</div></div>
-              <div class="stat"><div>Allow</div><div id="kAllow" class="ok">0</div></div>
+            <div class="kpi">
+              <div class="kpi-label">Block</div>
+              <div class="kpi-val bad" id="kBlock">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Warn</div>
+              <div class="kpi-val warn" id="kWarn">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Allow</div>
+              <div class="kpi-val ok" id="kAllow">0</div>
             </div>
           </div>
         </div>
 
-        <div class="explain">
-          <div class="explain-title">Decision summary</div>
-          <div class="explain-reason" id="topReason">—</div>
-          <div class="badges">
-            <div class="badge" id="integrityBadge">INTEGRITY: LOCAL</div>
-            <div class="badge" id="engineBadge">ENGINE: DETERMINISTIC</div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Top Reason</div>
+          </div>
+          <div class="panel-body">
+            <div class="reason" id="topReason">—</div>
           </div>
         </div>
 
-        <div class="signals">
-          <div class="signals-title">Active Signals</div>
-          <div id="signals" class="chips"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Signals</div>
+          </div>
+          <div class="panel-body">
+            <div class="signals" id="signals"></div>
+          </div>
         </div>
 
-        <div class="remed">
-          <div class="remed-title">Actionable Remediation</div>
-          <div class="remed-sub">Next steps to reduce risk (no network required).</div>
-          <div id="remedList" class="remed-list"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Actionable Remediation</div>
+          </div>
+          <div class="panel-body">
+            <div class="remed" id="remedList"></div>
+          </div>
         </div>
-      </div>
 
-      <!-- FULL WIDTH TABLE -->
-      <div class="card card-xl">
-        <div class="table">
-          <div class="thead">
-            <div>Input Content</div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Line Decisions</div>
+            <div class="panel-sub">Decision • Confidence • Entropy • Reason</div>
+          </div>
+
+          <div class="table-head">
+            <div>Line</div>
             <div>Decision</div>
             <div>Confidence</div>
             <div>Entropy</div>
             <div>Reason</div>
           </div>
-          <div id="rows"></div>
+
+          <div class="rows" id="rows"></div>
         </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-left">
+        <span class="muted">Validoon — deterministic, local-first scanning.</span>
       </div>
-    </div>
+      <div class="footer-right">
+        <span class="muted">Tip: use STRICT for incident review, DEV for noisy logs.</span>
+      </div>
+    </footer>
   </div>
 
-  <script src="app_prod.js" defer></script>
+  <script src="app_prod.js"></script>
 </body>
 </html>
