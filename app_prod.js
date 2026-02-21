@@ -1,15 +1,16 @@
-// app_prod.js — Validoon v4.6.2 (patched: remove Stripe-like test secret)
-// Fixes 3 Enterprise Red Flags:
-// (1) Padding Bypass: decay applies ONLY to meaningful lines (non-empty, non-comment)
-// (2) ReDoS / CPU spike: entropy scanning uses safe truncation + strict caps
+// app_prod.js — Validoon v4.6.3 (FP-focused patch)
+// Fixes:
+// (1) Padding Bypass: decay applies ONLY to meaningful lines
+// (2) ReDoS / CPU spike: safe truncation + strict caps for entropy scanning
 // (3) Deterministic prefixes + Base64 unpacking (bounded) for high-certainty secret detection
+// (4) False-Positive suppression: placeholder/doc markers suppress ENTROPY:SECRET
 // Local-only. Deterministic. No network calls.
 
 (() => {
   "use strict";
 
   const BUILD =
-    "Validoon v4.6.2 • Correlation + Guard + SafeNorm/Entropy Caps + Deterministic Secrets (patched tests)";
+    "Validoon v4.6.3 • Corr + Guard + Perf Caps + Det-Secrets + FP Placeholder Suppression";
   const $ = (id) => document.getElementById(id);
 
   // -----------------------------
@@ -224,6 +225,7 @@
       s.includes("documentation") ||
       s.includes("docs") ||
       s.includes("not a real secret") ||
+      s.includes("not real secret") ||
       s.includes("dummy") ||
       s.includes("placeholder") ||
       s.includes("for docs") ||
@@ -231,6 +233,23 @@
       s.includes("test ") ||
       s.includes("staging") ||
       s.includes("sandbox")
+    );
+  }
+
+  // FP suppression: if line clearly indicates redaction/placeholder/documentation
+  function isPlaceholderSecretLine(lowerLine) {
+    const s = String(lowerLine || "");
+    return (
+      s.includes("redacted") ||
+      s.includes("placeholder") ||
+      s.includes("not_real") ||
+      s.includes("not real") ||
+      s.includes("dummy") ||
+      s.includes("sample") ||
+      s.includes("example") ||
+      s.includes("for documentation") ||
+      s.includes("documentation") ||
+      s.includes("docs")
     );
   }
 
@@ -406,6 +425,9 @@
       const scanText = safeEntropyScanSlice(f.trimmed);
       const lowerScan = scanText.toLowerCase();
 
+      // FP suppression: placeholders/docs lines must not raise ENTROPY:SECRET
+      if (isPlaceholderSecretLine(lowerScan) || f.benign) continue;
+
       const tokens = scanText.match(/[A-Za-z0-9+/_=.-]{24,}/g);
       if (!tokens) continue;
 
@@ -431,6 +453,19 @@
         const allowed =
           f.hasAuthHeader || nearKw || (base64Like && POLICY_MODE !== "DEV");
         if (!allowed) continue;
+
+        // extra FP suppression: if token itself includes obvious placeholders
+        const tokLower = tok.toLowerCase();
+        if (
+          tokLower.includes("redacted") ||
+          tokLower.includes("placeholder") ||
+          tokLower.includes("notreal") ||
+          tokLower.includes("not_real") ||
+          tokLower.includes("dummy") ||
+          tokLower.includes("example")
+        ) {
+          continue;
+        }
 
         f.entropy = ent;
         f.entropyHit = true;
@@ -722,7 +757,6 @@
 
   // -----------------------------
   // Pass 2: correlation accumulator
-  // (1) padding bypass fixed: decay ONLY on meaningful lines
   // -----------------------------
   function correlate(feats, base) {
     const t = tuning();
@@ -1500,7 +1534,7 @@
     if (els.integrityBadge) els.integrityBadge.textContent = "INTEGRITY: LOCAL";
     if (els.engineBadge)
       els.engineBadge.textContent =
-        "ENGINE: DETERMINISTIC + CORR + PERF CAPS + DET-SECRETS";
+        "ENGINE: DETERMINISTIC + CORR + PERF CAPS + DET-SECRETS + FP";
 
     renderSignals(report.activeSignals);
     renderRemediation(report.remediation || []);
@@ -1552,7 +1586,7 @@
     lastReport = report;
     renderReport(report, scans);
 
-    console.log("[Validoon v4.6.2]", report);
+    console.log("[Validoon v4.6.3]", report);
   }
 
   function clearAll() {
@@ -1588,7 +1622,7 @@
 
   // -----------------------------
   // Built-in tests (A/B)
-  // NOTE: Patched TEST_B to avoid any Stripe-like token strings that trigger repo secret scanning.
+  // NOTE: TEST_B avoids any vendor-token-like strings triggering repo secret scanning.
   // -----------------------------
   const TEST_A = [
     "# Test A — padding bypass attempt (100 comment lines) should NOT kill accumulator now",
@@ -1599,13 +1633,12 @@
     "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldlRva2VuIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
   ].join("\n");
 
-  // Patched: does NOT contain "sk_live_" or "sk_test_" patterns.
   const TEST_B = [
     "# Test B — base64 concealed string (safe placeholder, not a vendor token)",
     "Here is a benign line.",
-    "Encoded blob (base64): " + btoa("STRIPE_KEY_REDACTED_FOR_TESTS"),
+    "Encoded blob (base64): " + btoa("KEY_REDACTED_FOR_TESTS_ONLY"),
     "sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    "note: docs example only",
+    "note: documentation sample only",
   ].join("\n");
 
   // -----------------------------
